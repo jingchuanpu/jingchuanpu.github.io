@@ -1,0 +1,150 @@
+
+<style>
+  .ctrl { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .ctrl label { font-size:13px; color:var(--color-text-secondary); width:130px; flex-shrink:0; }
+  .ctrl input[type=range] { flex:1; }
+  .ctrl span { font-size:13px; font-weight:500; min-width:52px; text-align:right; color:var(--color-text-primary); }
+  .stat-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:14px 0; }
+  .stat { background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:10px 12px; text-align:center; }
+  .stat-label { font-size:11px; color:var(--color-text-secondary); margin-bottom:4px; }
+  .stat-val { font-size:18px; font-weight:500; }
+</style>
+
+<div style="padding:1rem 0;">
+
+<div class="stat-grid">
+  <div class="stat"><div class="stat-label">OLS SSE</div><div class="stat-val" id="ols-sse">—</div></div>
+  <div class="stat"><div class="stat-label">Your SSE</div><div class="stat-val" id="your-sse" style="color:#D85A30">—</div></div>
+  <div class="stat"><div class="stat-label">SSE increase</div><div class="stat-val" id="sse-diff">—</div></div>
+</div>
+
+<div class="ctrl">
+  <label>Intercept offset</label>
+  <input type="range" min="-100" max="100" value="0" step="1" id="sl-b0" oninput="redraw()">
+  <span id="lbl-b0">+0</span>
+</div>
+<div class="ctrl">
+  <label>Price coef. offset</label>
+  <input type="range" min="-30" max="30" value="0" step="0.5" id="sl-b1" oninput="redraw()">
+  <span id="lbl-b1">+0.0</span>
+</div>
+<div class="ctrl">
+  <label>Advert coef. offset</label>
+  <input type="range" min="-40" max="40" value="0" step="0.5" id="sl-b2" oninput="redraw()">
+  <span id="lbl-b2">+0.0</span>
+</div>
+<button onclick="document.getElementById('sl-b0').value=0;document.getElementById('sl-b1').value=0;document.getElementById('sl-b2').value=0;redraw()" style="margin-bottom:14px;font-size:12px;padding:4px 14px;">Reset to OLS</button>
+
+<div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:8px;font-size:12px;color:var(--color-text-secondary);">
+  <span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:50%;background:#378ADD;display:inline-block;"></span>Actual (Y)</span>
+  <span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;background:#1D9E75;display:inline-block;transform:rotate(45deg);"></span>OLS predicted</span>
+  <span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;background:#7F77DD;display:inline-block;transform:rotate(45deg);"></span>Your predicted</span>
+  <span style="display:flex;align-items:center;gap:5px;"><span style="width:24px;height:2px;background:#D85A30;display:inline-block;"></span>Your residual</span>
+</div>
+
+<div style="position:relative;width:100%;height:380px;">
+  <canvas id="sc"></canvas>
+</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const actual  = [350,460,350,430,350,380,430,470,450,490,340,300,440,450,300];
+const price   = [5.5,7.5,8,8,6.8,7.5,4.5,6.4,7,5,7.2,7.9,5.9,5,7];
+const advert  = [3.3,3.3,3,4.5,3,4,3,3.7,3.5,4,3.5,3.2,4,3.5,2.7];
+const B0=306.526, B1=-24.975, B2=74.131;
+const olsPred = actual.map((_,i)=>B0+B1*price[i]+B2*advert[i]);
+const olsSSE  = actual.reduce((s,y,i)=>s+(y-olsPred[i])**2,0);
+
+function yourPred(db0,db1,db2){
+  return actual.map((_,i)=>(B0+db0)+(B1+db1)*price[i]+(B2+db2)*advert[i]);
+}
+
+const residualPlugin = {
+  id:'residuals',
+  afterDatasetsDraw(chart){
+    const {ctx,scales:{x,y}} = chart;
+    const db0=+document.getElementById('sl-b0').value;
+    const db1=+document.getElementById('sl-b1').value;
+    const db2=+document.getElementById('sl-b2').value;
+    const yp = yourPred(db0,db1,db2);
+    ctx.save();
+    ctx.strokeStyle='#D85A30';
+    ctx.lineWidth=1.5;
+    actual.forEach((ya,i)=>{
+      const xCoord = x.getPixelForValue(olsPred[i]);
+      const y1 = y.getPixelForValue(ya);
+      const y2 = y.getPixelForValue(yp[i]);
+      if(Math.abs(y1-y2)<1) return;
+      ctx.beginPath();
+      ctx.moveTo(xCoord, y1);
+      ctx.lineTo(xCoord, y2);
+      ctx.stroke();
+      const dir = y2>y1?1:-1;
+      ctx.beginPath();
+      ctx.moveTo(xCoord-5, y2-dir*8);
+      ctx.lineTo(xCoord, y2);
+      ctx.lineTo(xCoord+5, y2-dir*8);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+};
+
+const scatterActual = actual.map((y,i)=>({x:olsPred[i],y}));
+const scatterOls    = olsPred.map((p,i)=>({x:p,y:p}));
+const scatterYours  = yourPred(0,0,0).map((p,i)=>({x:olsPred[i],y:p}));
+
+const cfg = {
+  type:'scatter',
+  data:{
+    datasets:[
+      {label:'Actual',data:scatterActual,backgroundColor:'#378ADD',pointRadius:7,pointHoverRadius:8,order:3},
+      {label:'OLS predicted',data:scatterOls,backgroundColor:'#1D9E75',pointStyle:'rectRot',pointRadius:8,order:2},
+      {label:'Your predicted',data:scatterYours,backgroundColor:'#7F77DD',pointStyle:'rectRot',pointRadius:7,order:1}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    animation:false,
+    plugins:{legend:{display:false},tooltip:{
+      callbacks:{
+        label(ctx){
+          if(ctx.datasetIndex===0) return `Actual: ${Math.round(ctx.parsed.y)}`;
+          if(ctx.datasetIndex===1) return `OLS pred: ${Math.round(ctx.parsed.y)}`;
+          return `Your pred: ${Math.round(ctx.parsed.y)}`;
+        }
+      }
+    }},
+    scales:{
+      x:{title:{display:true,text:'OLS predicted sales (Ŷ)',color:'#888780',font:{size:12}},min:280,max:510,ticks:{color:'#888780'}},
+      y:{title:{display:true,text:'Actual sales (Y)',color:'#888780',font:{size:12}},min:260,max:510,ticks:{color:'#888780'}}
+    }
+  },
+  plugins:[residualPlugin]
+};
+
+const chart = new Chart(document.getElementById('sc'), cfg);
+
+function redraw(){
+  const db0=+document.getElementById('sl-b0').value;
+  const db1=+document.getElementById('sl-b1').value;
+  const db2=+document.getElementById('sl-b2').value;
+  document.getElementById('lbl-b0').textContent=(db0>=0?'+':'')+db0;
+  document.getElementById('lbl-b1').textContent=(db1>=0?'+':'')+db1.toFixed(1);
+  document.getElementById('lbl-b2').textContent=(db2>=0?'+':'')+db2.toFixed(1);
+  const yp = yourPred(db0,db1,db2);
+  chart.data.datasets[2].data = yp.map((p,i)=>({x:olsPred[i],y:p}));
+  chart.update('none');
+  const sse = actual.reduce((s,y,i)=>s+(y-yp[i])**2,0);
+  document.getElementById('ols-sse').textContent = Math.round(olsSSE).toLocaleString();
+  document.getElementById('your-sse').textContent = Math.round(sse).toLocaleString();
+  const diff = sse - olsSSE;
+  const el = document.getElementById('sse-diff');
+  el.textContent = (diff>=0?'+':'')+Math.round(diff).toLocaleString();
+  el.style.color = diff>50 ? '#D85A30' : diff<-50 ? '#1D9E75' : 'var(--color-text-primary)';
+  document.getElementById('your-sse').style.color = diff>50?'#D85A30':'var(--color-text-primary)';
+}
+redraw();
+</script>
