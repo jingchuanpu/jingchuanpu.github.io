@@ -1,0 +1,247 @@
+
+<style>
+  .ols-wrap { padding: 1rem 0; font-family: var(--font-sans); }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.5rem; }
+  .ctrl-card { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px 14px; }
+  .ctrl-label { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 6px; }
+  .ctrl-row { display: flex; align-items: center; gap: 10px; }
+  .ctrl-row input[type=range] { flex: 1; }
+  .ctrl-val { font-size: 14px; font-weight: 500; min-width: 52px; text-align: right; color: var(--color-text-primary); }
+  .metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 1.5rem; }
+  .metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 10px 14px; }
+  .metric-label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 2px; }
+  .metric-val { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+  .ols-btn { font-size: 13px; padding: 6px 14px; cursor: pointer; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: transparent; color: var(--color-text-primary); }
+  .ols-btn:hover { background: var(--color-background-secondary); }
+  .ols-btn.active { background: var(--color-background-info); border-color: var(--color-border-info); color: var(--color-text-info); }
+  .chart-tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+  .equation { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1rem; padding: 8px 12px; background: var(--color-background-secondary); border-radius: var(--border-radius-md); font-family: var(--font-mono); }
+</style>
+
+<div class="ols-wrap">
+  <div class="equation" id="eq-display">Ŷ = 306.5 + (−24.97) × Price + 74.13 × Advertising</div>
+
+  <div class="controls">
+    <div class="ctrl-card">
+      <div class="ctrl-label">Intercept (β₀)</div>
+      <div class="ctrl-row">
+        <input type="range" id="b0" min="0" max="700" step="1" value="306.5">
+        <span class="ctrl-val" id="b0-val">306.5</span>
+      </div>
+    </div>
+    <div class="ctrl-card">
+      <div class="ctrl-label">Price coefficient (β₁)</div>
+      <div class="ctrl-row">
+        <input type="range" id="b1" min="-80" max="40" step="0.5" value="-24.97">
+        <span class="ctrl-val" id="b1-val">−25.0</span>
+      </div>
+    </div>
+    <div class="ctrl-card">
+      <div class="ctrl-label">Advertising coefficient (β₂)</div>
+      <div class="ctrl-row">
+        <input type="range" id="b2" min="-20" max="180" step="0.5" value="74.13">
+        <span class="ctrl-val" id="b2-val">74.1</span>
+      </div>
+    </div>
+    <div style="display:flex; align-items:flex-end; gap:8px; padding-bottom:4px;">
+      <button class="ols-btn active" id="reset-btn" onclick="resetOLS()">Reset to OLS estimates</button>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-label">Error Sum of Squares (SSE)</div>
+      <div class="metric-val" id="ssr">—</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">OLS minimum SEE</div>
+      <div class="metric-val" id="ols-ssr">1,560</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Extra error vs OLS</div>
+      <div class="metric-val" id="extra-err" style="color: var(--color-text-danger)">—</div>
+    </div>
+  </div>
+
+  <div class="chart-tabs">
+    <button class="ols-btn active" id="tab-resid" onclick="showTab('resid')">Residuals</button>
+    <button class="ols-btn" id="tab-pred" onclick="showTab('pred')">Predicted vs actual</button>
+  </div>
+
+  <div style="position:relative; width:100%; height:300px;">
+    <canvas id="main-chart"></canvas>
+  </div>
+
+  <div style="margin-top:12px; font-size:12px; color:var(--color-text-secondary); line-height:1.6;">
+    Drag the sliders away from the OLS values — notice how the sum of squared residuals always increases. OLS finds the unique combination of coefficients where SSE is at its absolute minimum.
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const data = [
+  {week:1, sales:350, price:5.50, adv:3.3},
+  {week:2, sales:460, price:7.50, adv:3.3},
+  {week:3, sales:350, price:8.00, adv:3.0},
+  {week:4, sales:430, price:8.00, adv:4.5},
+  {week:5, sales:350, price:6.80, adv:3.0},
+  {week:6, sales:380, price:7.50, adv:4.0},
+  {week:7, sales:430, price:4.50, adv:3.0},
+  {week:8, sales:470, price:6.40, adv:3.7},
+  {week:9, sales:450, price:7.00, adv:3.5},
+  {week:10, sales:490, price:5.00, adv:4.0},
+  {week:11, sales:340, price:7.20, adv:3.5},
+  {week:12, sales:300, price:7.90, adv:3.2},
+  {week:13, sales:440, price:5.90, adv:4.0},
+  {week:14, sales:450, price:5.00, adv:3.5},
+  {week:15, sales:300, price:7.00, adv:2.7},
+];
+
+const OLS_B0 = 306.5268, OLS_B1 = -24.9750, OLS_B2 = 74.1310;
+const OLS_SSR = (() => {
+  return data.reduce((s,d) => {
+    const yhat = OLS_B0 + OLS_B1*d.price + OLS_B2*d.adv;
+    return s + (d.sales - yhat)**2;
+  }, 0);
+})();
+
+let currentTab = 'resid';
+let chart;
+
+function getCoeffs() {
+  return {
+    b0: parseFloat(document.getElementById('b0').value),
+    b1: parseFloat(document.getElementById('b1').value),
+    b2: parseFloat(document.getElementById('b2').value),
+  };
+}
+
+function getPredictions(b0, b1, b2) {
+  return data.map(d => b0 + b1*d.price + b2*d.adv);
+}
+
+function getResiduals(preds) {
+  return data.map((d,i) => d.sales - preds[i]);
+}
+
+function computeSSR(resids) {
+  return resids.reduce((s,r) => s + r*r, 0);
+}
+
+function updateEquation(b0, b1, b2) {
+  const sign1 = b1 >= 0 ? '+' : '−';
+  const sign2 = b2 >= 0 ? '+' : '−';
+  document.getElementById('eq-display').textContent =
+    `Ŷ = ${b0.toFixed(1)} ${sign1} ${Math.abs(b1).toFixed(2)} × Price ${sign2} ${Math.abs(b2).toFixed(2)} × Advertising`;
+}
+
+function updateMetrics(ssr) {
+  document.getElementById('ssr').textContent = Math.round(ssr).toLocaleString();
+  document.getElementById('ols-ssr').textContent = Math.round(OLS_SSR).toLocaleString();
+  const extra = ssr - OLS_SSR;
+  const el = document.getElementById('extra-err');
+  el.textContent = extra < 1 ? '0' : '+' + Math.round(extra).toLocaleString();
+  el.style.color = extra < 1 ? 'var(--color-text-success)' : 'var(--color-text-danger)';
+}
+
+function buildChart(labels, datasets, xLabel, yLabel) {
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById('main-chart'), {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: ctx => ` ${ctx.parsed.y.toFixed(1)}`
+      }}},
+      scales: {
+        x: { title: { display: true, text: xLabel, font: {size:12} }, ticks: { maxRotation: 0 } },
+        y: { title: { display: true, text: yLabel, font: {size:12} } }
+      }
+    }
+  });
+}
+
+function showResidChart(resids) {
+  const colors = resids.map(r => r >= 0 ? '#378ADD' : '#D85A30');
+  buildChart(
+    data.map(d => `Wk ${d.week}`),
+    [{ data: resids.map(r => parseFloat(r.toFixed(1))), backgroundColor: colors, borderRadius: 3 }],
+    'Week',
+    'Residual (actual − predicted)'
+  );
+}
+
+function showPredChart(preds) {
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById('main-chart'), {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: 'Observations',
+          data: preds.map((yh,i) => ({x: parseFloat(yh.toFixed(1)), y: data[i].sales})),
+          backgroundColor: '#378ADD',
+          pointRadius: 6,
+        },
+        {
+          label: '45° line',
+          data: [{x:280,y:280},{x:520,y:520}],
+          type: 'line',
+          borderColor: '#888780',
+          borderWidth: 1,
+          borderDash: [4,4],
+          pointRadius: 0,
+          fill: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: {display:true, text:'Predicted sales', font:{size:12}}, min:280, max:520 },
+        y: { title: {display:true, text:'Actual sales', font:{size:12}}, min:280, max:520 }
+      }
+    }
+  });
+}
+
+function update() {
+  const {b0, b1, b2} = getCoeffs();
+  document.getElementById('b0-val').textContent = b0.toFixed(1);
+  const s1 = b1 >= 0 ? '' : '−';
+  document.getElementById('b1-val').textContent = s1 + Math.abs(b1).toFixed(1);
+  const s2 = b2 >= 0 ? '' : '−';
+  document.getElementById('b2-val').textContent = s2 + Math.abs(b2).toFixed(1);
+  updateEquation(b0, b1, b2);
+  const preds = getPredictions(b0, b1, b2);
+  const resids = getResiduals(preds);
+  const ssr = computeSSR(resids);
+  updateMetrics(ssr);
+  if (currentTab === 'resid') showResidChart(resids);
+  else showPredChart(preds);
+}
+
+function showTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-resid').className = tab === 'resid' ? 'ols-btn active' : 'ols-btn';
+  document.getElementById('tab-pred').className = tab === 'pred' ? 'ols-btn active' : 'ols-btn';
+  update();
+}
+
+function resetOLS() {
+  document.getElementById('b0').value = OLS_B0;
+  document.getElementById('b1').value = OLS_B1;
+  document.getElementById('b2').value = OLS_B2;
+  update();
+}
+
+['b0','b1','b2'].forEach(id => {
+  document.getElementById(id).addEventListener('input', update);
+});
+
+update();
+</script>
