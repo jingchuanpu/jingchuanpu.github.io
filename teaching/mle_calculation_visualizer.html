@@ -1,0 +1,359 @@
+
+<style>
+  .tab-btn { background:none; border:0.5px solid var(--color-border-tertiary); padding:5px 14px; font-size:12px; cursor:pointer; border-radius:var(--border-radius-md); color:var(--color-text-secondary); }
+  .tab-btn.active { background:var(--color-background-secondary); color:var(--color-text-primary); border-color:var(--color-border-primary); }
+  .stat { background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:8px 10px; }
+  .stat-lbl { font-size:11px; color:var(--color-text-secondary); margin-bottom:2px; }
+  .stat-val { font-size:15px; font-weight:500; color:var(--color-text-primary); }
+  .formula-box { font-size:12px; color:var(--color-text-secondary); background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:10px 14px; line-height:1.8; }
+  .stu-row { display:grid; grid-template-columns:64px 40px 36px 60px 60px 64px 72px; gap:4px; align-items:center; font-size:11px; padding:3px 6px; border-radius:4px; }
+  .stu-row:nth-child(even) { background:var(--color-background-secondary); }
+  .stu-hdr { font-size:10px; color:var(--color-text-secondary); font-weight:500; }
+  .iter-btn { padding:5px 12px; font-size:12px; cursor:pointer; border-radius:var(--border-radius-md); border:0.5px solid var(--color-border-secondary); background:none; color:var(--color-text-primary); }
+  .iter-btn:disabled { opacity:0.3; cursor:default; }
+</style>
+
+<div style="padding:1rem 0;">
+
+  <div style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;">
+    <button class="tab-btn active" onclick="showTab('likelihood')">Likelihood per student</button>
+    <button class="tab-btn" onclick="showTab('surface')">Likelihood surface</button>
+    <button class="tab-btn" onclick="showTab('gradient')">Gradient descent</button>
+  </div>
+
+  <!-- TAB 1: Per-student likelihood breakdown -->
+  <div id="tab-likelihood">
+    <div class="formula-box" style="margin-bottom:12px;">
+      ℓ(β) = Σ [ yᵢ · log(p̂ᵢ) + (1−yᵢ) · log(1−p̂ᵢ) ]&nbsp;&nbsp;where&nbsp;&nbsp;p̂ᵢ = σ(β₀ + β₁·xᵢ)
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:12px;">
+      <div class="stat"><div class="stat-lbl">β₀ (MLE)</div><div class="stat-val" id="ll-b0">—</div></div>
+      <div class="stat"><div class="stat-lbl">β₁ (MLE)</div><div class="stat-val" id="ll-b1">—</div></div>
+      <div class="stat"><div class="stat-lbl">Total log-likelihood</div><div class="stat-val" id="ll-total">—</div></div>
+    </div>
+    <div class="stu-row stu-hdr">
+      <span>Student</span><span>Hours</span><span>y</span><span>p̂</span><span>log(p̂)</span><span>contrib.</span><span>verdict</span>
+    </div>
+    <div id="stu-table"></div>
+    <div style="position:relative;height:180px;margin-top:12px;"><canvas id="chart-contrib"></canvas></div>
+  </div>
+
+  <!-- TAB 2: Likelihood surface -->
+  <div id="tab-surface" style="display:none;">
+    <div class="formula-box" style="margin-bottom:10px;">
+      The surface shows ℓ(β₀, β₁) across a grid of candidate coefficients. MLE = the peak.
+      Contours are iso-likelihood lines. The red dot marks the maximum.
+    </div>
+    <div style="position:relative;height:340px;"><canvas id="chart-surface"></canvas></div>
+    <p style="font-size:11px;color:var(--color-text-secondary);text-align:center;margin:6px 0 0;" id="surface-caption"></p>
+  </div>
+
+  <!-- TAB 3: Gradient descent iteration -->
+  <div id="tab-gradient" style="display:none;">
+    <div class="formula-box" style="margin-bottom:10px;">
+      Update rule: &nbsp; β ← β + α · ∂ℓ/∂β &nbsp;|&nbsp;
+      ∂ℓ/∂β₀ = Σ(yᵢ − p̂ᵢ) &nbsp;·&nbsp; ∂ℓ/∂β₁ = Σ(yᵢ − p̂ᵢ)·xᵢ
+    </div>
+    <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
+      <button class="iter-btn" id="btn-prev-it" onclick="iterStep(-1)" disabled>&#8592;</button>
+      <button class="iter-btn" id="btn-next-it" onclick="iterStep(1)">Next iteration &#8594;</button>
+      <button class="iter-btn" onclick="iterReset()" style="margin-left:4px;">Reset</button>
+      <span style="font-size:12px;color:var(--color-text-secondary);margin-left:4px;" id="iter-label">Iteration 0</span>
+      <button class="iter-btn" onclick="iterPlay()" id="btn-play" style="margin-left:auto;">Play all</button>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-bottom:10px;">
+      <div class="stat"><div class="stat-lbl">β₀</div><div class="stat-val" id="g-b0">0.00</div></div>
+      <div class="stat"><div class="stat-lbl">β₁</div><div class="stat-val" id="g-b1">0.00</div></div>
+      <div class="stat"><div class="stat-lbl">∂ℓ/∂β₀</div><div class="stat-val" id="g-g0">—</div></div>
+      <div class="stat"><div class="stat-lbl">∂ℓ/∂β₁</div><div class="stat-val" id="g-g1">—</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <div style="font-size:10px;color:var(--color-text-secondary);margin-bottom:3px;">Log-likelihood vs iteration</div>
+        <div style="position:relative;height:190px;"><canvas id="chart-gll"></canvas></div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--color-text-secondary);margin-bottom:3px;">Coefficient path (β₀, β₁)</div>
+        <div style="position:relative;height:190px;"><canvas id="chart-path"></canvas></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+      <div>
+        <div style="font-size:10px;color:var(--color-text-secondary);margin-bottom:3px;">Gradient magnitudes</div>
+        <div style="position:relative;height:160px;"><canvas id="chart-grads"></canvas></div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--color-text-secondary);margin-bottom:3px;">Sigmoid fit at this iteration</div>
+        <div style="position:relative;height:160px;"><canvas id="chart-gsig"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const students = [
+  {name:"Ali",    h:1,  y:0},{name:"Beth",  h:1.5,y:0},
+  {name:"Carlos", h:2,  y:0},{name:"Dana",  h:2,  y:0},
+  {name:"Erin",   h:2.5,y:0},{name:"Felix", h:3,  y:0},
+  {name:"Grace",  h:3.5,y:0},{name:"Hamid", h:4,  y:0},
+  {name:"Isabel", h:4,  y:1},{name:"Jonas", h:4.5,y:1},
+  {name:"Kira",   h:5,  y:1},{name:"Luca",  h:5,  y:0},
+  {name:"Mia",    h:5.5,y:1},{name:"Nadia", h:6,  y:1},
+  {name:"Omar",   h:6,  y:1},{name:"Priya", h:7,  y:0},
+  {name:"Quinn",  h:7,  y:1},{name:"Rosa",  h:8,  y:1},
+  {name:"Sam",    h:9,  y:1},{name:"Tara",  h:10, y:1},
+];
+
+function sig(z){ return 1/(1+Math.exp(-z)); }
+function logLik(b0,b1){
+  return students.reduce((s,st)=>{
+    const p=sig(b0+b1*st.h);
+    return s + st.y*Math.log(p+1e-12)+(1-st.y)*Math.log(1-p+1e-12);
+  },0);
+}
+function grads(b0,b1){
+  let g0=0,g1=0;
+  students.forEach(st=>{ const e=st.y-sig(b0+b1*st.h); g0+=e; g1+=e*st.h; });
+  return [g0,g1];
+}
+
+/* ---- Run full GD once ---- */
+function runGD(lr=0.05, iters=120){
+  let b0=0,b1=0; const hist=[{b0,b1,ll:logLik(b0,b1),g0:0,g1:0,iter:0}];
+  for(let i=1;i<=iters;i++){
+    const [g0,g1]=grads(b0,b1);
+    b0+=lr*g0; b1+=lr*g1;
+    hist.push({b0,b1,ll:logLik(b0,b1),g0,g1,iter:i});
+  }
+  return hist;
+}
+const gdHist = runGD();
+const MLE = gdHist[gdHist.length-1];
+
+/* ========== TAB 1: per-student table + bar chart ========== */
+function buildTab1(){
+  document.getElementById('ll-b0').textContent = MLE.b0.toFixed(3);
+  document.getElementById('ll-b1').textContent = MLE.b1.toFixed(3);
+  const total = logLik(MLE.b0, MLE.b1);
+  document.getElementById('ll-total').textContent = total.toFixed(3);
+
+  const tbody = document.getElementById('stu-table');
+  tbody.innerHTML='';
+  const contribs=[], colors=[], names=[];
+
+  students.forEach(st=>{
+    const p = sig(MLE.b0+MLE.b1*st.h);
+    const lp = st.y===1 ? Math.log(p+1e-12) : Math.log(1-p+1e-12);
+    const correct = (p>=0.5&&st.y===1)||(p<0.5&&st.y===0);
+    contribs.push(parseFloat(lp.toFixed(3)));
+    colors.push(correct ? 'rgba(29,158,117,0.75)' : 'rgba(226,75,74,0.75)');
+    names.push(st.name);
+
+    const row = document.createElement('div');
+    row.className='stu-row';
+    const usedLog = st.y===1 ? `log(${p.toFixed(2)})` : `log(${(1-p).toFixed(2)})`;
+    row.innerHTML=`
+      <span style="color:var(--color-text-primary)">${st.name}</span>
+      <span style="color:var(--color-text-secondary)">${st.h}</span>
+      <span style="color:${st.y?'#1D9E75':'#E24B4A'};font-weight:500">${st.y}</span>
+      <span style="color:var(--color-text-primary)">${p.toFixed(3)}</span>
+      <span style="color:var(--color-text-secondary)">${usedLog}</span>
+      <span style="color:${lp>-0.5?'#1D9E75':'#E24B4A'};font-weight:500">${lp.toFixed(3)}</span>
+      <span style="font-size:10px;color:${correct?'#1D9E75':'#BA7517'}">${correct?'correct':'wrong'}</span>
+    `;
+    tbody.appendChild(row);
+  });
+
+  new Chart(document.getElementById('chart-contrib'),{
+    type:'bar',
+    data:{labels:names,datasets:[{label:'Log-likelihood contribution',data:contribs,backgroundColor:colors,borderWidth:0}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`ℓᵢ = ${c.parsed.y.toFixed(3)}`}}},
+      scales:{
+        x:{ticks:{font:{size:9},maxRotation:45}},
+        y:{title:{display:true,text:'ℓᵢ contribution',font:{size:10}},ticks:{callback:v=>v.toFixed(1)}}
+      }
+    }
+  });
+}
+
+/* ========== TAB 2: likelihood surface ========== */
+let surfaceBuilt = false;
+function buildSurface(){
+  if(surfaceBuilt) return; surfaceBuilt=true;
+
+  const B0s = Array.from({length:25},(_,i)=>-8+i*0.7);
+  const B1s = Array.from({length:25},(_,i)=>-0.5+i*0.12);
+  const datasets=[];
+
+  const allLL=[];
+  B0s.forEach(b0=>B1s.forEach(b1=>allLL.push(logLik(b0,b1))));
+  const minLL=Math.min(...allLL), maxLL=Math.max(...allLL);
+
+  B0s.forEach((b0,bi)=>{
+    const pts=B1s.map(b1=>({x:b1,y:b0,r:3}));
+    const lls=B1s.map(b1=>logLik(b0,b1));
+    const colors=lls.map(ll=>{
+      const t=(ll-minLL)/(maxLL-minLL+1e-9);
+      const r=Math.round(55+t*180), g=Math.round(90+t*120), bl=Math.round(180-t*130);
+      return `rgba(${r},${g},${bl},0.8)`;
+    });
+    datasets.push({
+      type:'bubble',data:pts.map((p,i)=>({...p,_ll:lls[i]})),
+      backgroundColor:colors,borderWidth:0,pointRadius:4
+    });
+  });
+
+  datasets.push({
+    type:'scatter',
+    data:[{x:MLE.b1,y:MLE.b0}],
+    backgroundColor:'#E24B4A',pointRadius:10,
+    label:'MLE'
+  });
+
+  document.getElementById('surface-caption').textContent =
+    `MLE: β₀ = ${MLE.b0.toFixed(2)}, β₁ = ${MLE.b1.toFixed(2)}, ℓ = ${MLE.ll.toFixed(2)}  |  Color: dark blue = low ℓ, gold = high ℓ`;
+
+  new Chart(document.getElementById('chart-surface'),{
+    type:'bubble',
+    data:{datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:{duration:0},
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        label:ctx=>{
+          const d=ctx.raw;
+          return `β₀=${d.y.toFixed(2)}, β₁=${d.x.toFixed(2)}, ℓ=${d._ll!==undefined?d._ll.toFixed(2):'MLE'}`;
+        }
+      }}},
+      scales:{
+        x:{title:{display:true,text:'β₁ (slope)',font:{size:11}},min:-0.55,max:2.4},
+        y:{title:{display:true,text:'β₀ (intercept)',font:{size:11}},min:-8.5,max:9.5}
+      }
+    }
+  });
+}
+
+/* ========== TAB 3: gradient descent ========== */
+let iterIdx=0, playTimer=null;
+
+const chartGLL = new Chart(document.getElementById('chart-gll'),{
+  type:'line',
+  data:{datasets:[
+    {label:'ℓ trail',data:[],borderColor:'#7F77DD',borderWidth:1.5,pointRadius:0,fill:false},
+    {label:'current',data:[],backgroundColor:'#E24B4A',pointRadius:6,showLine:false}
+  ]},
+  options:{
+    responsive:true,maintainAspectRatio:false,animation:{duration:120},
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{title:{display:true,text:'Iteration',font:{size:9}},ticks:{font:{size:9}}},
+      y:{title:{display:true,text:'Log-likelihood',font:{size:9}},ticks:{font:{size:9},callback:v=>v.toFixed(1)}}
+    }
+  }
+});
+
+const chartPath = new Chart(document.getElementById('chart-path'),{
+  type:'line',
+  data:{datasets:[
+    {label:'path',data:[],borderColor:'#EF9F27',borderWidth:1.5,pointRadius:1.5,pointBackgroundColor:'#EF9F27',fill:false,tension:0.2},
+    {label:'current',data:[],backgroundColor:'#E24B4A',pointRadius:7,showLine:false},
+    {label:'MLE',data:[{x:MLE.b0,y:MLE.b1}],backgroundColor:'#1D9E75',pointRadius:8,showLine:false}
+  ]},
+  options:{
+    responsive:true,maintainAspectRatio:false,animation:{duration:120},
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{title:{display:true,text:'β₀',font:{size:9}},ticks:{font:{size:9},callback:v=>v.toFixed(1)}},
+      y:{title:{display:true,text:'β₁',font:{size:9}},ticks:{font:{size:9},callback:v=>v.toFixed(2)}}
+    }
+  }
+});
+
+const chartGrads = new Chart(document.getElementById('chart-grads'),{
+  type:'bar',
+  data:{labels:['∂ℓ/∂β₀','∂ℓ/∂β₁'],datasets:[{data:[0,0],backgroundColor:['#378ADD','#7F77DD'],borderWidth:0}]},
+  options:{
+    responsive:true,maintainAspectRatio:false,animation:{duration:120},
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{ticks:{font:{size:10}}},
+      y:{title:{display:true,text:'Gradient',font:{size:9}},ticks:{font:{size:9},callback:v=>v.toFixed(2)}}
+    }
+  }
+});
+
+const xSig = Array.from({length:80},(_,i)=>i*12/79);
+const chartGsig = new Chart(document.getElementById('chart-gsig'),{
+  type:'scatter',
+  data:{datasets:[
+    {type:'line',data:xSig.map(x=>({x,y:sig(0)})),borderColor:'#378ADD',borderWidth:2,pointRadius:0,fill:false,tension:0.4},
+    {data:students.filter(s=>s.y).map(s=>({x:s.h,y:1})),backgroundColor:'#1D9E75',pointRadius:4},
+    {data:students.filter(s=>!s.y).map(s=>({x:s.h,y:0})),backgroundColor:'#E24B4A',pointRadius:4},
+  ]},
+  options:{
+    responsive:true,maintainAspectRatio:false,animation:{duration:120},
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{min:0,max:11,title:{display:true,text:'Hours',font:{size:9}},ticks:{font:{size:9}}},
+      y:{min:-0.1,max:1.1,title:{display:true,text:'P(pass)',font:{size:9}},ticks:{font:{size:9},callback:v=>v===0?'0':v===1?'1':''}}
+    }
+  }
+});
+
+function renderIter(idx){
+  const h = gdHist[idx];
+  iterIdx = idx;
+  document.getElementById('iter-label').textContent = `Iteration ${h.iter} / ${gdHist.length-1}`;
+  document.getElementById('btn-prev-it').disabled = idx===0;
+  document.getElementById('btn-next-it').disabled = idx===gdHist.length-1;
+
+  document.getElementById('g-b0').textContent = h.b0.toFixed(3);
+  document.getElementById('g-b1').textContent = h.b1.toFixed(3);
+  document.getElementById('g-g0').textContent = h.g0.toFixed(3);
+  document.getElementById('g-g1').textContent = h.g1.toFixed(3);
+
+  const trail = gdHist.slice(0,idx+1);
+  chartGLL.data.datasets[0].data = trail.map(t=>({x:t.iter,y:t.ll}));
+  chartGLL.data.datasets[1].data = [{x:h.iter,y:h.ll}];
+  chartGLL.update();
+
+  chartPath.data.datasets[0].data = trail.map(t=>({x:t.b0,y:t.b1}));
+  chartPath.data.datasets[1].data = [{x:h.b0,y:h.b1}];
+  chartPath.update();
+
+  chartGrads.data.datasets[0].data = [parseFloat(h.g0.toFixed(3)), parseFloat(h.g1.toFixed(3))];
+  chartGrads.update();
+
+  chartGsig.data.datasets[0].data = xSig.map(x=>({x,y:sig(h.b0+h.b1*x)}));
+  chartGsig.update();
+}
+
+function iterStep(d){ renderIter(Math.max(0,Math.min(gdHist.length-1,iterIdx+d))); }
+function iterReset(){ clearInterval(playTimer); playTimer=null; document.getElementById('btn-play').textContent='Play all'; renderIter(0); }
+function iterPlay(){
+  if(playTimer){ clearInterval(playTimer); playTimer=null; document.getElementById('btn-play').textContent='Play all'; return; }
+  document.getElementById('btn-play').textContent='Pause';
+  playTimer=setInterval(()=>{
+    if(iterIdx>=gdHist.length-1){ clearInterval(playTimer); playTimer=null; document.getElementById('btn-play').textContent='Play all'; return; }
+    renderIter(iterIdx+1);
+  },80);
+}
+
+/* ========== Tab switching ========== */
+function showTab(name){
+  ['likelihood','surface','gradient'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display = t===name?'':'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active',['likelihood','surface','gradient'][i]===name);
+  });
+  if(name==='surface') buildSurface();
+  if(name==='gradient') renderIter(0);
+}
+
+buildTab1();
+renderIter(0);
+</script>
