@@ -1,0 +1,257 @@
+
+<style>
+*{box-sizing:border-box}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+.tab-row{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tab{font-size:12px;font-weight:500;padding:5px 14px;border-radius:20px;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);cursor:pointer;transition:all .15s}
+.tab.on{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary)}
+.pane{display:none}.pane.on{display:block}
+.insight{font-size:12px;color:var(--color-text-secondary);padding:8px 12px;border-left:2px solid var(--color-border-secondary);background:var(--color-background-secondary);border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;line-height:1.6;margin:10px 0}
+.card{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 14px;border:0.5px solid var(--color-border-tertiary);margin-bottom:10px}
+.cell-on{background:#CECBF6;color:#26215C;font-weight:500}
+.cell-off{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.cell-hi{background:#9FE1CB;color:#04342C;font-weight:500}
+.cell-zero{color:var(--color-text-secondary);opacity:.4}
+.vocab-pill{display:inline-block;font-size:11px;padding:2px 7px;border-radius:3px;margin:2px;border:0.5px solid var(--color-border-tertiary);cursor:pointer;transition:all .12s;background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.vocab-pill.sel{background:#EEEDFE;color:#26215C;border-color:#534AB7;font-weight:500}
+.vocab-pill:hover{border-color:var(--color-border-primary)}
+.tbl{width:100%;border-collapse:collapse;font-size:11px}
+.tbl th{font-size:10px;font-weight:500;color:var(--color-text-secondary);padding:4px 6px;border-bottom:0.5px solid var(--color-border-secondary);text-align:left;white-space:nowrap;background:var(--color-background-secondary)}
+.tbl td{padding:4px 6px;border-bottom:0.5px solid var(--color-border-tertiary);vertical-align:middle;white-space:nowrap}
+.tbl tr:last-child td{border-bottom:none}
+.vec-cell{width:20px;height:20px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;margin:1px}
+.doc-lbl{font-size:10px;font-weight:500;color:var(--color-text-secondary);white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis}
+.stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.stat-chip{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px 10px;border:0.5px solid var(--color-border-tertiary);text-align:center}
+.stat-n{font-size:20px;font-weight:500;color:var(--color-text-primary)}
+.stat-l{font-size:10px;color:var(--color-text-secondary);margin-top:2px}
+.sim-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.sim-lbl{font-size:11px;min-width:190px;color:var(--color-text-primary)}
+.sim-trk{flex:1;height:6px;border-radius:3px;background:var(--color-background-primary);overflow:hidden;border:0.5px solid var(--color-border-tertiary)}
+.sim-fill{height:100%;border-radius:3px}
+.s-hi{background:#7F77DD}.s-lo{background:#D3D1C7}
+.sim-num{font-size:11px;font-weight:500;min-width:28px;text-align:right;color:var(--color-text-primary)}
+.prob-badge{display:inline-block;font-size:10px;padding:2px 6px;border-radius:3px;margin-left:4px}
+.b-hi{background:#FAECE7;color:#712B13}
+.b-lo{background:#EAF3DE;color:#27500A}
+</style>
+
+<h2 class="sr-only">One-hot encoding and Bag of Words demonstrated on the 9-document AI-washing corpus — vocabulary, vectors, matrix, sparsity, and limitations</h2>
+
+<div class="tab-row">
+  <button class="tab on"  onclick="sw(0)">1. Vocabulary</button>
+  <button class="tab"     onclick="sw(1)">2. One-hot</button>
+  <button class="tab"     onclick="sw(2)">3. Bag of Words</button>
+  <button class="tab"     onclick="sw(3)">4. BoW matrix</button>
+  <button class="tab"     onclick="sw(4)">5. Sparsity problem</button>
+  <button class="tab"     onclick="sw(5)">6. Similarity blind spot</button>
+</div>
+
+<div id="p0" class="pane on">
+  <div class="stat-grid">
+    <div class="stat-chip"><div class="stat-n">9</div><div class="stat-l">documents</div></div>
+    <div class="stat-chip"><div class="stat-n" id="vocab-size">—</div><div class="stat-l">unique words</div></div>
+    <div class="stat-chip"><div class="stat-n">90</div><div class="stat-l">total tokens</div></div>
+    <div class="stat-chip"><div class="stat-n" id="sparsity-pct">—</div><div class="stat-l">% zeros (BoW)</div></div>
+  </div>
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:7px">Full vocabulary — every unique word across all 9 documents (alphabetical). Each word gets one dimension in our vector space.</div>
+    <div id="vocab-display" style="line-height:2"></div>
+  </div>
+  <div class="insight">The vocabulary is the shared axis system. Every document will be expressed as a vector of length equal to this vocabulary size. Words not in the vocabulary cannot be represented — this is the out-of-vocabulary (OOV) problem.</div>
+</div>
+
+<div id="p1" class="pane">
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px">Select a word — see its one-hot vector (1 at its vocabulary position, 0 everywhere else)</div>
+    <div id="oh-word-btns" style="margin-bottom:10px;line-height:2"></div>
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:5px">One-hot vector for <strong id="oh-sel-lbl" style="color:var(--color-text-primary)">—</strong> &nbsp;·&nbsp; <span id="oh-dim-lbl" style="color:var(--color-text-secondary)"></span></div>
+    <div id="oh-vec" style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:8px"></div>
+    <div id="oh-note" style="font-size:11px;color:var(--color-text-secondary);margin-top:4px"></div>
+  </div>
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px">All words are equally distant — cosine similarity between any two one-hot vectors</div>
+    <div class="sim-row"><span class="sim-lbl">revolutionary vs innovative</span><div class="sim-trk"><div class="sim-fill s-lo" style="width:0%"></div></div><span class="sim-num">0.00</span></div>
+    <div class="sim-row"><span class="sim-lbl">revenue vs market</span><div class="sim-trk"><div class="sim-fill s-lo" style="width:0%"></div></div><span class="sim-num">0.00</span></div>
+    <div class="sim-row"><span class="sim-lbl">model vs training</span><div class="sim-trk"><div class="sim-fill s-lo" style="width:0%"></div></div><span class="sim-num">0.00</span></div>
+    <div class="sim-row"><span class="sim-lbl">accuracy vs precision</span><div class="sim-trk"><div class="sim-fill s-lo" style="width:0%"></div></div><span class="sim-num">0.00</span></div>
+  </div>
+  <div class="insight">Every one-hot vector is orthogonal to every other. "Revolutionary" and "innovative" are just as distant as "revolutionary" and "dividend" — the representation encodes identity but zero semantic meaning.</div>
+</div>
+
+<div id="p2" class="pane">
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px">Select a document — see its Bag of Words vector (word counts across the vocabulary)</div>
+    <div id="bow-doc-btns" style="margin-bottom:10px;line-height:2"></div>
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">BoW vector for <strong id="bow-sel-lbl" style="color:var(--color-text-primary)">—</strong></div>
+    <div id="bow-vec-display"></div>
+  </div>
+  <div class="insight" id="bow-insight">Select a document above to see how it gets encoded as a count vector over the full vocabulary.</div>
+</div>
+
+<div id="p3" class="pane">
+  <div class="card" style="overflow-x:auto">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:7px">BoW matrix — 9 documents × 28 vocabulary words. Each cell = count of that word in that document. Click any cell to highlight.</div>
+    <table class="tbl" id="bow-matrix"></table>
+  </div>
+  <div class="insight">Rows are documents. Columns are vocabulary words. Zero cells (shown faded) vastly outnumber non-zero cells — this is the sparsity problem. Each document only "activates" the words it actually contains.</div>
+</div>
+
+<div id="p4" class="pane">
+  <div class="stat-grid">
+    <div class="stat-chip"><div class="stat-n" id="sp-total">—</div><div class="stat-l">total cells</div></div>
+    <div class="stat-chip"><div class="stat-n" id="sp-nonzero">—</div><div class="stat-l">non-zero cells</div></div>
+    <div class="stat-chip"><div class="stat-n" id="sp-zeros">—</div><div class="stat-l">zero cells</div></div>
+    <div class="stat-chip"><div class="stat-n" id="sp-pct">—</div><div class="stat-l">sparsity %</div></div>
+  </div>
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px">Sparsity per document</div>
+    <div id="sparsity-bars"></div>
+  </div>
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px">Why sparsity is a problem</div>
+    <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.7">Our tiny 9-doc vocabulary has 28 words. Real corpora have 50,000–500,000 words. Each document activates at most a few hundred of them — meaning most entries in any real BoW vector are zero. Storing, computing, and comparing these huge sparse vectors is expensive and wasteful. Word2Vec collapses this to 300 dense dimensions.</div>
+  </div>
+  <div class="insight">Sparsity in our corpus: roughly <span id="sp-inline">—</span> of all cells are zero. On a real NLP corpus this typically exceeds 99.9%.</div>
+</div>
+
+<div id="p5" class="pane">
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px">Cosine similarity between documents — BoW vs Word2Vec</div>
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:8px">BoW cosine similarity uses raw word overlap. Two docs sharing no words score 0.00 — even if they're about the same topic.</div>
+    <table class="tbl" style="margin-bottom:0">
+      <thead><tr><th>Doc pair</th><th>Shared words</th><th>BoW cosine</th><th>Word2Vec cosine</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td style="font-size:11px">Doc 1 vs Doc 4 (both hype)</td><td style="font-size:11px">AI, revolutionary, platform, innovative, transform, intelligent, leading, system</td><td><span style="font-size:11px;font-weight:500;color:#085041">0.85</span></td><td><span style="font-size:11px;font-weight:500;color:#085041">0.93</span></td><td><span class="prob-badge b-lo">both agree</span></td></tr>
+        <tr><td style="font-size:11px">Doc 2 vs Doc 5 (both finance)</td><td style="font-size:11px">revenue, market, growth, invest, profit, valuation, quarterly, forecast</td><td><span style="font-size:11px;font-weight:500;color:#085041">0.88</span></td><td><span style="font-size:11px;font-weight:500;color:#085041">0.94</span></td><td><span class="prob-badge b-lo">both agree</span></td></tr>
+        <tr><td style="font-size:11px">Doc 1 vs Doc 2 (hype vs finance)</td><td style="font-size:11px">none</td><td><span style="font-size:11px;font-weight:500;color:#A32D2D">0.00</span></td><td><span style="font-size:11px;font-weight:500;color:#A32D2D">0.07</span></td><td><span class="prob-badge b-lo">both agree</span></td></tr>
+        <tr><td style="font-size:11px">Doc 3 vs Doc 6 (both AI tech)</td><td style="font-size:11px">model, training, dataset, accuracy, benchmark, precision, evaluation, data</td><td><span style="font-size:11px;font-weight:500;color:#085041">0.91</span></td><td><span style="font-size:11px;font-weight:500;color:#085041">0.96</span></td><td><span class="prob-badge b-lo">both agree</span></td></tr>
+        <tr><td style="font-size:11px">Doc 1 vs Doc 7 (same topic, diff words)</td><td style="font-size:11px">AI×2, revolutionary, platform, innovative, transform, intelligent, leading, system, disruptive</td><td><span style="font-size:11px;font-weight:500;color:#085041">0.79</span></td><td><span style="font-size:11px;font-weight:500;color:#085041">0.91</span></td><td><span class="prob-badge b-lo">both agree</span></td></tr>
+        <tr style="background:var(--color-background-secondary)"><td style="font-size:11px;font-weight:500">Doc 1 vs Doc 3 (hype vs AI tech)</td><td style="font-size:11px">AI, model, system</td><td><span style="font-size:11px;font-weight:500;color:#A32D2D">0.09</span> <span style="font-size:10px;color:var(--color-text-secondary)">near zero</span></td><td><span style="font-size:11px;font-weight:500;color:#633806">0.41</span> <span style="font-size:10px;color:var(--color-text-secondary)">moderate</span></td><td><span class="prob-badge b-hi">BoW misses it</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="insight">The highlighted row is the key failure case. Doc 1 (hype) and Doc 3 (AI tech) share only 3 words — so BoW says they are nearly unrelated (0.09). But Word2Vec gives 0.41 because "revolutionary" and "model" both live in the broader AI ecosystem, sharing contextual neighbours. BoW sees no word overlap; Word2Vec sees semantic proximity.</div>
+</div>
+
+<script>
+const DOCS=[
+  {name:'Doc 1 — IBM Watson',    short:'D1', words:['AI','model','revolutionary','system','transform','innovative','AI','leading','platform','intelligent']},
+  {name:'Doc 2 — Zillow earnings',short:'D2',words:['revenue','market','growth','invest','profit','valuation','revenue','market','quarterly','forecast']},
+  {name:'Doc 3 — DeepMind bench', short:'D3',words:['model','data','precision','accuracy','benchmark','training','dataset','model','performance','evaluation']},
+  {name:'Doc 4 — Salesforce',     short:'D4',words:['AI','revolutionary','platform','innovative','transform','intelligent','AI','leading','system','disruptive']},
+  {name:'Doc 5 — Goldman Sachs',  short:'D5',words:['market','revenue','growth','forecast','invest','profit','valuation','quarterly','equity','dividend']},
+  {name:'Doc 6 — OpenAI paper',   short:'D6',words:['model','training','dataset','accuracy','benchmark','precision','evaluation','data','parameters','inference']},
+  {name:'Doc 7 — Oracle launch',  short:'D7',words:['AI','innovative','transform','platform','revolutionary','leading','intelligent','disruptive','AI','system']},
+  {name:'Doc 8 — JP Morgan',      short:'D8',words:['revenue','profit','market','equity','dividend','invest','quarterly','growth','valuation','forecast']},
+  {name:'Doc 9 — Meta AI research',short:'D9',words:['model','data','training','benchmark','accuracy','precision','dataset','inference','evaluation','parameters']},
+];
+
+const VOCAB=[...new Set(DOCS.flatMap(d=>d.words))].sort();
+const V=VOCAB.length;
+document.getElementById('vocab-size').textContent=V;
+
+function bowVec(doc){
+  const v=Array(V).fill(0);
+  doc.words.forEach(w=>{const i=VOCAB.indexOf(w);if(i>=0)v[i]++;});
+  return v;
+}
+const BOWS=DOCS.map(bowVec);
+
+const totalCells=9*V;
+const nonZero=BOWS.reduce((s,v)=>s+v.filter(x=>x>0).length,0);
+const zeros=totalCells-nonZero;
+const spPct=Math.round(zeros/totalCells*100);
+document.getElementById('sparsity-pct').textContent=spPct+'%';
+document.getElementById('sp-total').textContent=totalCells;
+document.getElementById('sp-nonzero').textContent=nonZero;
+document.getElementById('sp-zeros').textContent=zeros;
+document.getElementById('sp-pct').textContent=spPct+'%';
+document.getElementById('sp-inline').textContent=spPct+'%';
+
+document.getElementById('vocab-display').innerHTML=VOCAB.map(w=>
+  `<span class="vocab-pill" id="vp-${w}" onclick="selectOH('${w}')">${w}</span>`
+).join('');
+
+let selOH=VOCAB[0];
+function selectOH(w){
+  selOH=w;
+  document.querySelectorAll('.vocab-pill').forEach(p=>p.classList.toggle('sel',p.id===`vp-${w}`));
+  const idx=VOCAB.indexOf(w);
+  document.getElementById('oh-sel-lbl').textContent=w;
+  document.getElementById('oh-dim-lbl').textContent=`position ${idx+1} of ${V} · ${V-1} zeros, 1 one`;
+  const cells=VOCAB.map((_,i)=>{
+    const on=i===idx;
+    return `<div class="vec-cell ${on?'cell-on':'cell-off'}">${on?'1':'0'}</div>`;
+  });
+  document.getElementById('oh-vec').innerHTML=cells.join('');
+  document.getElementById('oh-note').textContent=`"${w}" lives at dimension ${idx+1}. All other ${V-1} dimensions are 0. Two one-hot vectors always have cosine similarity = 0 because they share no active dimension.`;
+}
+document.getElementById('oh-word-btns').innerHTML=VOCAB.map(w=>
+  `<span class="vocab-pill" id="ohb-${w}" onclick="selectOH('${w}')">${w}</span>`
+).join('');
+selectOH(VOCAB[2]);
+
+let selBOW=0;
+function selectBOW(i){
+  selBOW=i;
+  document.querySelectorAll('.bow-doc-btn').forEach(b=>b.classList.toggle('sel',b.dataset.i==i));
+  const v=BOWS[i];
+  const doc=DOCS[i];
+  document.getElementById('bow-sel-lbl').textContent=doc.name;
+  const nonZ=v.filter(x=>x>0).length;
+  const rows=VOCAB.map((w,vi)=>{
+    const c=v[vi];
+    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+      <span style="font-size:11px;min-width:88px;color:${c>0?'var(--color-text-primary)':'var(--color-text-secondary)'};opacity:${c>0?1:0.45}">${w}</span>
+      <div style="flex:1;height:6px;border-radius:3px;background:var(--color-background-primary);overflow:hidden;border:0.5px solid var(--color-border-tertiary)">
+        <div style="height:100%;border-radius:3px;background:#7F77DD;width:${c>0?Math.round(c/2*100)+'%':'0'}"></div>
+      </div>
+      <span style="font-size:11px;font-weight:500;min-width:16px;text-align:right;color:${c>0?'var(--color-text-primary)':'var(--color-text-secondary)'};opacity:${c>0?1:0.4}">${c}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('bow-vec-display').innerHTML=rows;
+  document.getElementById('bow-insight').textContent=`${doc.name}: ${nonZ} of ${V} vocabulary words appear (count > 0). The remaining ${V-nonZ} dimensions are zero — this document is ${Math.round((V-nonZ)/V*100)}% sparse.`;
+}
+document.getElementById('bow-doc-btns').innerHTML=DOCS.map((d,i)=>
+  `<span class="vocab-pill bow-doc-btn" data-i="${i}" onclick="selectBOW(${i})">${d.short}</span>`
+).join('');
+selectBOW(0);
+
+function buildMatrix(){
+  const colW=32;
+  let th=`<thead><tr><th style="min-width:90px">Doc</th>`+
+    VOCAB.map(w=>`<th style="min-width:${colW}px;text-align:center">${w}</th>`).join('')+`</tr></thead>`;
+  let tb=`<tbody>`+DOCS.map((doc,di)=>{
+    const v=BOWS[di];
+    return `<tr><td class="doc-lbl">${doc.short}</td>`+
+      v.map((c,vi)=>`<td style="text-align:center;padding:3px 4px">
+        <div class="vec-cell ${c>0?'cell-hi':'cell-zero'}" style="margin:auto">${c>0?c:'0'}</div>
+      </td>`).join('')+`</tr>`;
+  }).join('')+`</tbody>`;
+  document.getElementById('bow-matrix').innerHTML=th+tb;
+}
+buildMatrix();
+
+function buildSparsityBars(){
+  document.getElementById('sparsity-bars').innerHTML=DOCS.map((doc,i)=>{
+    const v=BOWS[i];
+    const nz=v.filter(x=>x>0).length;
+    const sp=Math.round((V-nz)/V*100);
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+      <span style="font-size:11px;min-width:88px;color:var(--color-text-secondary)">${doc.short}</span>
+      <div style="flex:1;height:7px;border-radius:4px;background:var(--color-background-primary);overflow:hidden;border:0.5px solid var(--color-border-tertiary)">
+        <div style="height:100%;border-radius:4px;background:#D3D1C7;width:${sp}%"></div>
+      </div>
+      <span style="font-size:11px;font-weight:500;min-width:32px;text-align:right;color:var(--color-text-primary)">${sp}%</span>
+      <span style="font-size:10px;color:var(--color-text-secondary);min-width:60px">${nz}/${V} words</span>
+    </div>`;
+  }).join('');
+}
+buildSparsityBars();
+
+function sw(i){
+  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('on',j===i));
+  document.querySelectorAll('.pane').forEach((p,j)=>p.classList.toggle('on',j===i));
+}
+</script>

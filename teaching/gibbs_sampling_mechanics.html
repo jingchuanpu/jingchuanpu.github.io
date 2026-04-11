@@ -1,0 +1,231 @@
+
+<style>
+*{box-sizing:border-box}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+.step-nav{display:flex;align-items:center;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+.sdot{width:26px;height:26px;border-radius:50%;border:0.5px solid var(--color-border-secondary);background:transparent;font-size:11px;font-weight:500;color:var(--color-text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.sdot.active{background:var(--color-text-primary);color:var(--color-background-primary);border-color:var(--color-text-primary)}
+.sdot.done{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary)}
+.sline{flex:1;height:0.5px;background:var(--color-border-tertiary);min-width:8px}
+.panel{display:none}.panel.active{display:block}
+.slabel{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.ssub{font-size:12px;color:var(--color-text-secondary);margin-bottom:14px;line-height:1.6}
+.nav-btns{display:flex;gap:8px;margin-top:16px}
+.card{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 14px;border:0.5px solid var(--color-border-tertiary);margin-bottom:10px}
+.formula{font-family:var(--font-mono);font-size:12px;color:var(--color-text-primary);background:var(--color-background-secondary);padding:10px 14px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);line-height:2;margin:8px 0}
+.insight{font-size:12px;color:var(--color-text-secondary);padding:8px 12px;border-left:2px solid var(--color-border-secondary);background:var(--color-background-secondary);border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;line-height:1.6;margin-top:8px}
+.word-grid{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}
+.tok{display:inline-block;font-size:12px;font-weight:500;padding:4px 9px;border-radius:4px;border:1.5px solid}
+.tok-a{background:#CECBF6;color:#26215C;border-color:#7F77DD}
+.tok-b{background:#9FE1CB;color:#04342C;border-color:#1D9E75}
+.tok-c{background:#FAC775;color:#412402;border-color:#BA7517}
+.tok-focus{background:#F1EFE8;color:#2C2C2A;border-color:#888780;outline:2.5px solid #2C2C2A;outline-offset:1px}
+.tok-ghost{opacity:0.25}
+.two-col{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.three-col{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.prob-card{border-radius:var(--border-radius-md);padding:10px 12px;border:0.5px solid}
+.pc-a{background:#EEEDFE;border-color:#534AB7}
+.pc-b{background:#E1F5EE;border-color:#0F6E56}
+.pc-c{background:#FAEEDA;border-color:#854F0B}
+.pc-title{font-size:11px;font-weight:500;margin-bottom:6px}
+.pta{color:#3C3489}.ptb{color:#085041}.ptc{color:#633806}
+.prow{display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:11px;color:var(--color-text-primary)}
+.ptrack{flex:1;height:5px;border-radius:3px;background:var(--color-background-primary);overflow:hidden}
+.pfill{height:100%;border-radius:3px}
+.pfa{background:#7F77DD}.pfb{background:#1D9E75}.pfc{background:#BA7517}
+.pnum{min-width:32px;text-align:right;font-size:10px;color:var(--color-text-secondary)}
+.highlight-box{background:var(--color-background-primary);border:2px solid var(--color-border-primary);border-radius:var(--border-radius-md);padding:10px 14px;margin:8px 0}
+.sweep-row{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.sweep-tok{font-size:11px;font-weight:500;padding:3px 7px;border-radius:4px;border:1px solid}
+.arrow-right{font-size:12px;color:var(--color-text-tertiary);margin:0 2px}
+</style>
+
+<h2 class="sr-only">How Gibbs sampling works in LDA — a 6-step visual walkthrough from the core idea to convergence</h2>
+
+<div class="step-nav">
+  <button class="sdot active" onclick="go(0)">1</button><div class="sline"></div>
+  <button class="sdot" onclick="go(1)">2</button><div class="sline"></div>
+  <button class="sdot" onclick="go(2)">3</button><div class="sline"></div>
+  <button class="sdot" onclick="go(3)">4</button><div class="sline"></div>
+  <button class="sdot" onclick="go(4)">5</button><div class="sline"></div>
+  <button class="sdot" onclick="go(5)">6</button>
+</div>
+
+<div id="p0" class="panel active">
+  <div class="slabel">The core idea — one variable at a time</div>
+  <div class="ssub">Gibbs sampling breaks an intractable joint problem into a sequence of simple conditional ones. Instead of inferring all topic assignments at once, it holds everything fixed and updates just one word at a time.</div>
+  <div class="two-col">
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px">The hard problem</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.7">Find the best topic assignment for all N words simultaneously.<br><br>With 90 words and 3 topics → 3⁹⁰ possible states.<br><strong style="color:var(--color-text-primary)">Completely intractable.</strong></div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px">The Gibbs trick</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.7">Fix all other assignments. Sample just one word's topic from its conditional distribution.<br><br>With everything else fixed → just 3 probabilities to compute.<br><strong style="color:var(--color-text-primary)">Trivially easy.</strong></div>
+    </div>
+  </div>
+  <div class="insight">The mathematical guarantee: if you repeat this process long enough — cycling through every variable repeatedly — the joint distribution of all variables converges to the true posterior. This is proven by Markov chain theory.</div>
+  <div class="nav-btns"><button onclick="go(1)">Next →</button></div>
+</div>
+
+<div id="p1" class="panel">
+  <div class="slabel">Step 1 — random initialization</div>
+  <div class="ssub">Every word in every document gets a random topic assignment. This is the starting state — pure noise. The colors are meaningless at this point.</div>
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px">Doc 1 — IBM Watson press release (initial random assignments)</div>
+    <div class="word-grid">
+      <span class="tok tok-c">AI</span><span class="tok tok-a">model</span><span class="tok tok-b">revolutionary</span><span class="tok tok-c">system</span><span class="tok tok-a">transform</span><span class="tok tok-b">innovative</span><span class="tok tok-c">AI</span><span class="tok tok-a">leading</span><span class="tok tok-b">platform</span><span class="tok tok-a">intelligent</span>
+    </div>
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-top:6px">Every color is essentially random — "AI" landed in amber, "model" in purple, "revolutionary" in green. None of this reflects reality yet.</div>
+  </div>
+  <div class="insight">The starting state doesn't matter for the final result — only for how long it takes to converge. Gibbs sampling will find the same answer regardless of initialization, given enough iterations.</div>
+  <div class="nav-btns"><button onclick="go(0)">← Back</button><button onclick="go(2)">Next →</button></div>
+</div>
+
+<div id="p2" class="panel">
+  <div class="slabel">Step 2 — pick one word and remove its label</div>
+  <div class="ssub">The sampler visits each word in sequence. For the current word, it temporarily removes its topic assignment — as if the word has no color yet. Everything else stays fixed.</div>
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px">Doc 1 — focusing on the word "revolutionary"</div>
+    <div class="word-grid">
+      <span class="tok tok-c tok-ghost">AI</span>
+      <span class="tok tok-a tok-ghost">model</span>
+      <span class="tok tok-focus">revolutionary ?</span>
+      <span class="tok tok-c tok-ghost">system</span>
+      <span class="tok tok-a tok-ghost">transform</span>
+      <span class="tok tok-b tok-ghost">innovative</span>
+      <span class="tok tok-c tok-ghost">AI</span>
+      <span class="tok tok-a tok-ghost">leading</span>
+      <span class="tok tok-b tok-ghost">platform</span>
+      <span class="tok tok-a tok-ghost">intelligent</span>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px">What we know about this doc</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.7">After removing "revolutionary": this document currently has 3 purple words, 4 green words, 2 amber words. So it leans slightly green.</div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px">What we know about "revolutionary"</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.7">Across all other documents, "revolutionary" appears 8× in amber, 1× in purple, 1× in green. So the corpus associates it strongly with amber.</div>
+    </div>
+  </div>
+  <div class="insight">By removing just one label at a time, all the counts we need are available from the current state of all other assignments. No expensive global computation required.</div>
+  <div class="nav-btns"><button onclick="go(1)">← Back</button><button onclick="go(3)">Next →</button></div>
+</div>
+
+<div id="p3" class="panel">
+  <div class="slabel">Step 3 — compute the conditional probability</div>
+  <div class="ssub">Using the two signals (how does this document lean? how does the corpus use this word?), we compute a probability for each topic. The formula multiplies them together.</div>
+  <div class="formula">P(topic = k  |  word w, document d, everything else)<br>&nbsp;&nbsp;∝  <span style="color:#534AB7">(n<sub style="font-size:10px">wk</sub> + β)</span>  ×  <span style="color:#0F6E56">(n<sub style="font-size:10px">dk</sub> + α)</span><br><br><span style="color:#534AB7">n<sub style="font-size:10px">wk</sub></span> = times word w appears in topic k (across all docs)<br><span style="color:#0F6E56">n<sub style="font-size:10px">dk</sub></span> = times topic k appears in this document<br>α, β = smoothing priors (prevent zero probabilities)</div>
+  <div class="three-col">
+    <div class="prob-card pc-a">
+      <div class="pc-title pta">Topic A — AI tech</div>
+      <div class="prow"><span style="min-width:90px">word count</span><div class="ptrack"><div class="pfill pfa" style="width:12%"></div></div><span class="pnum">1×</span></div>
+      <div class="prow"><span style="min-width:90px">doc lean</span><div class="ptrack"><div class="pfill pfa" style="width:33%"></div></div><span class="pnum">3 / 9</span></div>
+      <div style="font-size:12px;font-weight:500;color:#3C3489;margin-top:5px">P ≈ 8%</div>
+    </div>
+    <div class="prob-card pc-b">
+      <div class="pc-title ptb">Topic B — finance</div>
+      <div class="prow"><span style="min-width:90px">word count</span><div class="ptrack"><div class="pfill pfb" style="width:12%"></div></div><span class="pnum">1×</span></div>
+      <div class="prow"><span style="min-width:90px">doc lean</span><div class="ptrack"><div class="pfill pfb" style="width:44%"></div></div><span class="pnum">4 / 9</span></div>
+      <div style="font-size:12px;font-weight:500;color:#085041;margin-top:5px">P ≈ 11%</div>
+    </div>
+    <div class="prob-card pc-c">
+      <div class="pc-title ptc">Topic C — hype</div>
+      <div class="prow"><span style="min-width:90px">word count</span><div class="ptrack"><div class="pfill pfc" style="width:88%"></div></div><span class="pnum">8×</span></div>
+      <div class="prow"><span style="min-width:90px">doc lean</span><div class="ptrack"><div class="pfill pfc" style="width:22%"></div></div><span class="pnum">2 / 9</span></div>
+      <div style="font-size:12px;font-weight:500;color:#633806;margin-top:5px">P ≈ 81%</div>
+    </div>
+  </div>
+  <div class="insight">The word signal (8× in amber) completely dominates here and overrides the document lean (which slightly favored green). "Revolutionary" gets pulled toward the hype topic even though this document currently leans elsewhere.</div>
+  <div class="nav-btns"><button onclick="go(2)">← Back</button><button onclick="go(4)">Next →</button></div>
+</div>
+
+<div id="p4" class="panel">
+  <div class="slabel">Step 4 — draw a sample and re-assign</div>
+  <div class="ssub">We don't just pick the highest probability — we <em>sample</em> from the distribution. Most of the time the highest-probability topic wins, but occasionally a lower-probability topic gets chosen. This randomness is essential: it lets the algorithm escape local traps and explore the full space.</div>
+  <div class="highlight-box">
+    <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:8px">Spin the wheel for "revolutionary":</div>
+    <div style="display:flex;height:16px;border-radius:4px;overflow:hidden;margin-bottom:8px">
+      <div style="width:8%;background:#7F77DD"></div>
+      <div style="width:11%;background:#1D9E75"></div>
+      <div style="width:81%;background:#BA7517"></div>
+    </div>
+    <div style="display:flex;gap:16px;font-size:11px">
+      <span style="color:#3C3489">AI tech 8%</span>
+      <span style="color:#085041">Finance 11%</span>
+      <span style="color:#633806">Hype 81%</span>
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:var(--color-text-secondary)">A random draw lands at 74% → falls in the amber zone →</div>
+    <div style="margin-top:6px"><span class="tok tok-c">revolutionary</span><span style="font-size:12px;color:var(--color-text-secondary);margin-left:8px">re-assigned to Topic C (hype) ✓</span></div>
+  </div>
+  <div class="two-col">
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px">Why sample instead of just picking the max?</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.7">Pure greedy selection gets stuck. Sampling preserves exploration — a word can occasionally try a different topic, which can unlock better global configurations that greedy would never find.</div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px">What changes after re-assignment?</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.7">The counts update instantly. Now "revolutionary" contributes +1 to the amber word count and +1 to this document's amber count — making amber slightly more attractive for the next word.</div>
+    </div>
+  </div>
+  <div class="insight">This is a Markov chain: the next state depends only on the current state. After enough steps, the chain "mixes" and the samples it produces are effectively draws from the true posterior distribution.</div>
+  <div class="nav-btns"><button onclick="go(3)">← Back</button><button onclick="go(5)">Next →</button></div>
+</div>
+
+<div id="p5" class="panel">
+  <div class="slabel">Step 5 — sweep, repeat, converge</div>
+  <div class="ssub">One full iteration sweeps through every word in every document, re-sampling each one. After hundreds of sweeps, assignments stop changing — topics have crystallized.</div>
+  <div class="card" style="margin-bottom:8px">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px">One iteration across Doc 1 (each word visited in order)</div>
+    <div class="sweep-row">
+      <span class="sweep-tok tok-c" style="font-size:10px;padding:2px 6px">AI → C</span><span class="arrow-right">→</span>
+      <span class="sweep-tok tok-a" style="font-size:10px;padding:2px 6px">model → A</span><span class="arrow-right">→</span>
+      <span class="sweep-tok tok-c" style="font-size:10px;padding:2px 6px">revolutionary → C</span><span class="arrow-right">→</span>
+      <span class="sweep-tok tok-a" style="font-size:10px;padding:2px 6px">system → A</span><span class="arrow-right">→</span>
+      <span class="sweep-tok tok-c" style="font-size:10px;padding:2px 6px">transform → C</span>
+    </div>
+    <div class="sweep-row">
+      <span class="sweep-tok tok-c" style="font-size:10px;padding:2px 6px">innovative → C</span><span class="arrow-right">→</span>
+      <span class="sweep-tok tok-a" style="font-size:10px;padding:2px 6px">AI → A</span><span class="arrow-right">→</span>
+      <span class="sweep-tok tok-c" style="font-size:10px;padding:2px 6px">leading → C</span><span class="arrow-right">→</span>
+      <span class="sweep-tok tok-a" style="font-size:10px;padding:2px 6px">platform → A</span><span class="arrow-right">→</span>
+      <span class="sweep-tok tok-c" style="font-size:10px;padding:2px 6px">intelligent → C</span>
+    </div>
+  </div>
+  <div class="three-col" style="margin-bottom:10px">
+    <div class="card" style="text-align:center">
+      <div style="font-size:22px;font-weight:500;color:var(--color-text-primary)">~5–15</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px">iterations to see structure</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:22px;font-weight:500;color:var(--color-text-primary)">~50–200</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px">iterations to converge</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:22px;font-weight:500;color:var(--color-text-primary)">0</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px">re-assignments at convergence</div>
+    </div>
+  </div>
+  <div class="insight">Convergence is detected when the number of re-assignments per iteration drops to zero — or practically, when it stays below a small threshold for several consecutive sweeps. The final topic–word counts are then read off as the model output.</div>
+  <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+    <button onclick="sendPrompt('What are the limitations of Gibbs sampling for LDA?')">Limitations ↗</button>
+    <button onclick="sendPrompt('What is variational inference and how does it differ from Gibbs sampling in LDA?')">Variational inference ↗</button>
+    <button onclick="sendPrompt('How do you choose the number of topics K in LDA?')">Choosing K ↗</button>
+  </div>
+  <div class="nav-btns"><button onclick="go(4)">← Back</button></div>
+</div>
+
+<script>
+const N=6;
+function go(i){
+  for(let j=0;j<N;j++){
+    document.getElementById('p'+j).classList.toggle('active',j===i);
+    const d=document.querySelectorAll('.sdot')[j];
+    d.classList.remove('active','done');
+    if(j===i) d.classList.add('active');
+    else if(j<i) d.classList.add('done');
+  }
+}
+</script>

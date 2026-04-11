@@ -1,0 +1,216 @@
+
+<style>
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+*{box-sizing:border-box}
+body{margin:0}
+
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tab{font-size:12px;font-weight:500;padding:5px 14px;border-radius:20px;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);cursor:pointer;transition:all .15s}
+.tab.active{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary)}
+
+.panel{display:none}
+.panel.active{display:block}
+
+.corpus-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:4px}
+.doc-card{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;border:0.5px solid var(--color-border-tertiary)}
+.doc-label{font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:4px}
+.doc-text{font-size:12px;color:var(--color-text-primary);line-height:1.5}
+.highlight-word{font-weight:500;border-radius:3px;padding:0 2px}
+.hw-rev{background:#FAECE7;color:#712B13}
+.hw-ai{background:#FAEEDA;color:#633806}
+.hw-pre{background:#EAF3DE;color:#27500A}
+
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-align:left;padding:6px 10px;border-bottom:0.5px solid var(--color-border-secondary)}
+td{padding:7px 10px;border-bottom:0.5px solid var(--color-border-tertiary);color:var(--color-text-primary);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.word-pill{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px}
+.pill-rev{background:#FAECE7;color:#712B13}
+.pill-ai{background:#FAEEDA;color:#633806}
+.pill-pre{background:#EAF3DE;color:#27500A}
+
+.bar-cell{width:120px}
+.mini-bar{height:8px;border-radius:4px;background:var(--color-background-secondary);overflow:hidden}
+.mini-fill{height:100%;border-radius:4px}
+.fill-rev{background:#D85A30}
+.fill-ai{background:#BA7517}
+.fill-pre{background:#639922}
+
+.formula-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 14px;margin-bottom:14px;border:0.5px solid var(--color-border-tertiary)}
+.formula-box p{margin:0;font-size:12px;color:var(--color-text-secondary);line-height:1.7}
+.formula-box code{font-family:var(--font-mono);font-size:12px;color:var(--color-text-primary)}
+
+.insight{font-size:12px;color:var(--color-text-secondary);margin-top:12px;line-height:1.6;padding:8px 12px;border-left:2px solid var(--color-border-secondary);background:var(--color-background-secondary);border-radius:0 var(--border-radius-md) var(--border-radius-md) 0}
+
+.vec-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.vec-card{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;border:0.5px solid var(--color-border-tertiary)}
+.vec-title{font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px}
+.vec-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.vec-word{font-size:11px;color:var(--color-text-primary);min-width:72px}
+.vec-bar-track{flex:1;height:6px;background:var(--color-background-primary);border-radius:3px;overflow:hidden;margin:0 6px}
+.vec-bar-fill{height:100%;border-radius:3px}
+.vec-score{font-size:11px;font-weight:500;min-width:30px;text-align:right;color:var(--color-text-primary)}
+</style>
+
+<h2 class="sr-only">TF-IDF worked example across three documents: IBM Watson, Zillow, and a grounded baseline</h2>
+
+<div class="tabs">
+  <button class="tab active" onclick="show('corpus')">1. Corpus</button>
+  <button class="tab" onclick="show('tf')">2. Term frequency</button>
+  <button class="tab" onclick="show('idf')">3. Inverse doc frequency</button>
+  <button class="tab" onclick="show('tfidf')">4. TF-IDF scores</button>
+  <button class="tab" onclick="show('vectors')">5. Document vectors</button>
+</div>
+
+<div id="corpus" class="panel active">
+  <div class="corpus-cards">
+    <div class="doc-card">
+      <div class="doc-label">Doc 1 — IBM Watson</div>
+      <div class="doc-text">Watson is a <span class="highlight-word hw-rev">revolutionary</span> <span class="highlight-word hw-ai">AI</span> system that transforms industries</div>
+    </div>
+    <div class="doc-card">
+      <div class="doc-label">Doc 2 — Zillow</div>
+      <div class="doc-text">Our <span class="highlight-word hw-ai">AI</span> platform delivers accurate and <span class="highlight-word hw-rev">revolutionary</span> results</div>
+    </div>
+    <div class="doc-card">
+      <div class="doc-label">Doc 3 — Baseline</div>
+      <div class="doc-text">Our model achieves 98% <span class="highlight-word hw-pre">precision</span> on a labeled dataset</div>
+    </div>
+  </div>
+  <div class="insight">Three words are traced: <span class="word-pill pill-rev">revolutionary</span> appears in Docs 1 &amp; 2 only &nbsp;·&nbsp; <span class="word-pill pill-ai">AI</span> appears in Docs 1 &amp; 2 only &nbsp;·&nbsp; <span class="word-pill pill-pre">precision</span> appears in Doc 3 only. Watch how TF-IDF rewards distinctiveness.</div>
+</div>
+
+<div id="tf" class="panel">
+  <div class="formula-box">
+    <p><code>TF(t, d) = count of t in d ÷ total words in d</code></p>
+    <p>Measures how frequently a term appears within one document.</p>
+  </div>
+  <table>
+    <thead><tr><th>Word</th><th>Doc 1 (8 words)</th><th>Doc 2 (8 words)</th><th>Doc 3 (9 words)</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="word-pill pill-rev">revolutionary</span></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><span>1/8 = 0.125</span><div class="mini-bar" style="width:80px"><div class="mini-fill fill-rev" style="width:62%"></div></div></div></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><span>1/8 = 0.125</span><div class="mini-bar" style="width:80px"><div class="mini-fill fill-rev" style="width:62%"></div></div></div></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><span>0/9 = 0.000</span><div class="mini-bar" style="width:80px"><div class="mini-fill fill-rev" style="width:0%"></div></div></div></td>
+      </tr>
+      <tr>
+        <td><span class="word-pill pill-ai">AI</span></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><span>1/8 = 0.125</span><div class="mini-bar" style="width:80px"><div class="mini-fill fill-ai" style="width:62%"></div></div></div></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><span>1/8 = 0.125</span><div class="mini-bar" style="width:80px"><div class="mini-fill fill-ai" style="width:62%"></div></div></div></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><span>0/9 = 0.000</span><div class="mini-bar" style="width:80px"><div class="mini-fill fill-ai" style="width:0%"></div></div></div></td>
+      </tr>
+      <tr>
+        <td><span class="word-pill pill-pre">precision</span></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><span>0/8 = 0.000</span><div class="mini-bar" style="width:80px"><div class="mini-fill fill-pre" style="width:0%"></div></div></div></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><span>0/8 = 0.000</span><div class="mini-bar" style="width:80px"><div class="mini-fill fill-pre" style="width:0%"></div></div></div></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><span>1/9 = 0.111</span><div class="mini-bar" style="width:80px"><div class="mini-fill fill-pre" style="width:55%"></div></div></div></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="insight">TF alone cannot distinguish "revolutionary" from "AI" — both score identically in Docs 1 and 2. We need IDF to separate them by corpus-wide rarity.</div>
+</div>
+
+<div id="idf" class="panel">
+  <div class="formula-box">
+    <p><code>IDF(t) = log( N / df(t) )</code></p>
+    <p>N = total documents (3) &nbsp;·&nbsp; df(t) = number of documents containing t &nbsp;·&nbsp; log = natural log</p>
+  </div>
+  <table>
+    <thead><tr><th>Word</th><th>Appears in</th><th>df(t)</th><th>Calculation</th><th>IDF score</th><th style="width:100px"></th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="word-pill pill-rev">revolutionary</span></td>
+        <td>Docs 1, 2</td>
+        <td>2</td>
+        <td style="font-family:var(--font-mono);font-size:11px">log(3/2)</td>
+        <td><strong>0.405</strong></td>
+        <td><div class="mini-bar"><div class="mini-fill fill-rev" style="width:30%"></div></div></td>
+      </tr>
+      <tr>
+        <td><span class="word-pill pill-ai">AI</span></td>
+        <td>Docs 1, 2</td>
+        <td>2</td>
+        <td style="font-family:var(--font-mono);font-size:11px">log(3/2)</td>
+        <td><strong>0.405</strong></td>
+        <td><div class="mini-bar"><div class="mini-fill fill-ai" style="width:30%"></div></div></td>
+      </tr>
+      <tr>
+        <td><span class="word-pill pill-pre">precision</span></td>
+        <td>Doc 3 only</td>
+        <td>1</td>
+        <td style="font-family:var(--font-mono);font-size:11px">log(3/1)</td>
+        <td><strong>1.099</strong></td>
+        <td><div class="mini-bar"><div class="mini-fill fill-pre" style="width:82%"></div></div></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="insight">"precision" gets a much higher IDF (1.099 vs 0.405) because it is unique to one document — it is a more distinctive signal. A word in every document would score IDF = log(3/3) = 0 and be completely suppressed.</div>
+</div>
+
+<div id="tfidf" class="panel">
+  <div class="formula-box">
+    <p><code>TF-IDF(t, d) = TF(t, d) × IDF(t)</code></p>
+    <p>High score = frequent in this document AND rare across the corpus. That word is the document's fingerprint.</p>
+  </div>
+  <table>
+    <thead><tr><th>Word</th><th>Doc 1</th><th>Doc 2</th><th>Doc 3</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="word-pill pill-rev">revolutionary</span></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><strong>0.051</strong><div class="mini-bar" style="width:80px"><div class="mini-fill fill-rev" style="width:46%"></div></div></div></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><strong>0.051</strong><div class="mini-bar" style="width:80px"><div class="mini-fill fill-rev" style="width:46%"></div></div></div></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><strong>0.000</strong><div class="mini-bar" style="width:80px"><div class="mini-fill fill-rev" style="width:0%"></div></div></div></td>
+      </tr>
+      <tr>
+        <td><span class="word-pill pill-ai">AI</span></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><strong>0.051</strong><div class="mini-bar" style="width:80px"><div class="mini-fill fill-ai" style="width:46%"></div></div></div></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><strong>0.051</strong><div class="mini-bar" style="width:80px"><div class="mini-fill fill-ai" style="width:46%"></div></div></div></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><strong>0.000</strong><div class="mini-bar" style="width:80px"><div class="mini-fill fill-ai" style="width:0%"></div></div></div></td>
+      </tr>
+      <tr>
+        <td><span class="word-pill pill-pre">precision</span></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><strong>0.000</strong><div class="mini-bar" style="width:80px"><div class="mini-fill fill-pre" style="width:0%"></div></div></div></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><strong>0.000</strong><div class="mini-bar" style="width:80px"><div class="mini-fill fill-pre" style="width:0%"></div></div></div></td>
+        <td><div style="display:flex;align-items:center;gap:8px"><strong>0.122</strong><div class="mini-bar" style="width:80px"><div class="mini-fill fill-pre" style="width:100%"></div></div></div></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="insight">"precision" scores highest overall (0.122) despite appearing in only one document — because it is maximally distinctive. "revolutionary" and "AI" score identically and modestly, since they are shared across two docs. Doc 3's vector is dominated by substantive terms; Docs 1 &amp; 2 are dominated by hype.</div>
+</div>
+
+<div id="vectors" class="panel">
+  <div class="vec-grid">
+    <div class="vec-card">
+      <div class="vec-title">Doc 1 — IBM Watson</div>
+      <div class="vec-row"><span class="vec-word">revolutionary</span><div class="vec-bar-track"><div class="vec-bar-fill fill-rev" style="width:42%"></div></div><span class="vec-score">0.051</span></div>
+      <div class="vec-row"><span class="vec-word">AI</span><div class="vec-bar-track"><div class="vec-bar-fill fill-ai" style="width:42%"></div></div><span class="vec-score">0.051</span></div>
+      <div class="vec-row"><span class="vec-word">transforms</span><div class="vec-bar-track"><div class="vec-bar-fill fill-rev" style="width:82%"></div></div><span class="vec-score">0.099</span></div>
+      <div class="vec-row"><span class="vec-word">precision</span><div class="vec-bar-track"><div class="vec-bar-fill fill-pre" style="width:0%"></div></div><span class="vec-score">0.000</span></div>
+    </div>
+    <div class="vec-card">
+      <div class="vec-title">Doc 2 — Zillow</div>
+      <div class="vec-row"><span class="vec-word">revolutionary</span><div class="vec-bar-track"><div class="vec-bar-fill fill-rev" style="width:42%"></div></div><span class="vec-score">0.051</span></div>
+      <div class="vec-row"><span class="vec-word">AI</span><div class="vec-bar-track"><div class="vec-bar-fill fill-ai" style="width:42%"></div></div><span class="vec-score">0.051</span></div>
+      <div class="vec-row"><span class="vec-word">accurate</span><div class="vec-bar-track"><div class="vec-bar-fill fill-rev" style="width:82%"></div></div><span class="vec-score">0.099</span></div>
+      <div class="vec-row"><span class="vec-word">precision</span><div class="vec-bar-track"><div class="vec-bar-fill fill-pre" style="width:0%"></div></div><span class="vec-score">0.000</span></div>
+    </div>
+    <div class="vec-card">
+      <div class="vec-title">Doc 3 — Baseline</div>
+      <div class="vec-row"><span class="vec-word">revolutionary</span><div class="vec-bar-track"><div class="vec-bar-fill fill-rev" style="width:0%"></div></div><span class="vec-score">0.000</span></div>
+      <div class="vec-row"><span class="vec-word">AI</span><div class="vec-bar-track"><div class="vec-bar-fill fill-ai" style="width:0%"></div></div><span class="vec-score">0.000</span></div>
+      <div class="vec-row"><span class="vec-word">precision</span><div class="vec-bar-track"><div class="vec-bar-fill fill-pre" style="width:100%"></div></div><span class="vec-score">0.122</span></div>
+      <div class="vec-row"><span class="vec-word">dataset</span><div class="vec-bar-track"><div class="vec-bar-fill fill-pre" style="width:82%"></div></div><span class="vec-score">0.099</span></div>
+    </div>
+  </div>
+  <div class="insight" style="margin-top:12px">The three document vectors are now numerically distinct — Docs 1 &amp; 2 share a hype-weighted fingerprint while Doc 3 has a completely different, substantive-weighted profile. A cosine similarity between Doc 1 and Doc 2 would be high; between Doc 1 and Doc 3 it would be near zero. This is TF-IDF doing its job.</div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>

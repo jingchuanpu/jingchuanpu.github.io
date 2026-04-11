@@ -1,0 +1,363 @@
+
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font-sans, sans-serif); font-size: 13px; color: var(--color-text-primary); }
+.nav { display: flex; gap: 0; border-bottom: 0.5px solid var(--color-border-secondary); margin: 0 1rem; }
+.nav-btn { padding: 9px 14px; font-size: 13px; cursor: pointer; border: none; background: transparent; color: var(--color-text-secondary); border-bottom: 2px solid transparent; margin-bottom: -0.5px; transition: all .15s; white-space: nowrap; }
+.nav-btn.active { color: var(--color-text-primary); border-bottom-color: #1D9E75; font-weight: 500; }
+.page { display: none; padding: 1rem; }
+.page.active { display: block; }
+.sec { font-size: 13px; color: var(--color-text-secondary); margin: 0 0 8px; line-height: 1.6; }
+h3 { font-size: 14px; font-weight: 500; margin: 14px 0 6px; }
+.hl-g { background: #EAF3DE; color: #27500A; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.hl-r { background: #FCEBEB; color: #791F1F; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.hl-b { background: #E6F1FB; color: #0C447C; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.hl-a { background: #FAEEDA; color: #633806; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.hl-p { background: #EEEDFE; color: #3C3489; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+hr { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 12px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { background: var(--color-background-secondary); padding: 5px 8px; text-align: left; border-bottom: 0.5px solid var(--color-border-secondary); font-weight: 500; }
+td { padding: 4px 8px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.tag-y { background: #EAF3DE; color: #27500A; padding: 1px 7px; border-radius: 3px; font-weight: 500; font-size: 11px; }
+.tag-n { background: #FCEBEB; color: #791F1F; padding: 1px 7px; border-radius: 3px; font-weight: 500; font-size: 11px; }
+.tag-dup { background: #FAEEDA; color: #633806; padding: 1px 5px; border-radius: 3px; font-size: 10px; }
+.tree-card { border: 0.5px solid var(--color-border-secondary); border-radius: 8px; padding: 10px 12px; background: var(--color-background-secondary); margin: 8px 0; }
+.tree-title { font-weight: 500; font-size: 13px; margin-bottom: 6px; }
+.vote-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 12px; }
+.vote-bar-wrap { flex: 1; height: 8px; background: var(--color-background-primary); border-radius: 4px; overflow: hidden; border: 0.5px solid var(--color-border-tertiary); }
+.vote-bar { height: 100%; border-radius: 4px; }
+.fi-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 13px; }
+.fi-bar-wrap { flex: 1; height: 10px; background: var(--color-background-secondary); border-radius: 5px; overflow: hidden; }
+.fi-bar { height: 100%; border-radius: 5px; background: #1D9E75; }
+.predict-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px,1fr)); gap: 8px; margin: 10px 0; }
+.predict-card { border-radius: 8px; padding: 8px 10px; border: 0.5px solid var(--color-border-tertiary); text-align: center; }
+.predict-val { font-size: 16px; font-weight: 500; margin-bottom: 2px; }
+.oob-badge { display: inline-block; font-size: 10px; padding: 1px 5px; border-radius: 3px; background: var(--color-background-secondary); color: var(--color-text-secondary); margin-left: 4px; }
+</style>
+
+<div style="padding:1rem 1rem 0">
+  <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:3px">Random Forest — Play Tennis dataset (14 instances)</div>
+  <div style="font-size:17px;font-weight:500">3 core ideas illustrated step by step</div>
+</div>
+
+<div class="nav" style="margin-top:10px">
+  <button class="nav-btn active" onclick="showPage('boot')">1. Bootstrap sampling</button>
+  <button class="nav-btn" onclick="showPage('trees')">2. Three trees</button>
+  <button class="nav-btn" onclick="showPage('vote')">3. Majority vote</button>
+  <button class="nav-btn" onclick="showPage('fi')">4. Feature importance</button>
+  <button class="nav-btn" onclick="showPage('oob')">5. OOB error</button>
+</div>
+
+<!-- PAGE 1: Bootstrap sampling -->
+<div id="boot" class="page active">
+  <p class="sec">Each tree sees a different <span class="hl-b">bootstrap sample</span> — 14 rows drawn with replacement from the original 14. Some days appear twice (duplicates); some are left out (out-of-bag).</p>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:10px">
+
+    <div class="tree-card">
+      <div class="tree-title" style="color:#085041">Tree 1 bootstrap sample</div>
+      <table>
+        <tr><th>Day</th><th>Outlook</th><th>Play?</th></tr>
+        <tr><td>D1</td><td>Sunny</td><td><span class="tag-n">No</span></td></tr>
+        <tr><td>D1 <span class="tag-dup">×2</span></td><td>Sunny</td><td><span class="tag-n">No</span></td></tr>
+        <tr><td>D3</td><td>Overcast</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D4</td><td>Rainy</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D6</td><td>Rainy</td><td><span class="tag-n">No</span></td></tr>
+        <tr><td>D7</td><td>Overcast</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D8</td><td>Sunny</td><td><span class="tag-n">No</span></td></tr>
+        <tr><td>D9</td><td>Sunny</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D10</td><td>Rainy</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D11</td><td>Sunny</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D12</td><td>Overcast</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D13</td><td>Overcast</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D13 <span class="tag-dup">×2</span></td><td>Overcast</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D14</td><td>Rainy</td><td><span class="tag-n">No</span></td></tr>
+      </table>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-top:6px">OOB (unseen): D2, D5</div>
+    </div>
+
+    <div class="tree-card">
+      <div class="tree-title" style="color:#3C3489">Tree 2 bootstrap sample</div>
+      <table>
+        <tr><th>Day</th><th>Outlook</th><th>Play?</th></tr>
+        <tr><td>D2</td><td>Sunny</td><td><span class="tag-n">No</span></td></tr>
+        <tr><td>D3</td><td>Overcast</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D3 <span class="tag-dup">×2</span></td><td>Overcast</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D5</td><td>Rainy</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D6</td><td>Rainy</td><td><span class="tag-n">No</span></td></tr>
+        <tr><td>D7</td><td>Overcast</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D8</td><td>Sunny</td><td><span class="tag-n">No</span></td></tr>
+        <tr><td>D9</td><td>Sunny</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D10</td><td>Rainy</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D11</td><td>Sunny</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D11 <span class="tag-dup">×2</span></td><td>Sunny</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D12</td><td>Overcast</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D13</td><td>Overcast</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D14</td><td>Rainy</td><td><span class="tag-n">No</span></td></tr>
+      </table>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-top:6px">OOB (unseen): D1, D4</div>
+    </div>
+
+    <div class="tree-card">
+      <div class="tree-title" style="color:#633806">Tree 3 bootstrap sample</div>
+      <table>
+        <tr><th>Day</th><th>Outlook</th><th>Play?</th></tr>
+        <tr><td>D1</td><td>Sunny</td><td><span class="tag-n">No</span></td></tr>
+        <tr><td>D2</td><td>Sunny</td><td><span class="tag-n">No</span></td></tr>
+        <tr><td>D4</td><td>Rainy</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D5</td><td>Rainy</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D5 <span class="tag-dup">×2</span></td><td>Rainy</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D6</td><td>Rainy</td><td><span class="tag-n">No</span></td></tr>
+        <tr><td>D7</td><td>Overcast</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D8</td><td>Sunny</td><td><span class="tag-n">No</span></td></tr>
+        <tr><td>D9</td><td>Sunny</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D10</td><td>Rainy</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D12</td><td>Overcast</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D12 <span class="tag-dup">×2</span></td><td>Overcast</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D13</td><td>Overcast</td><td><span class="tag-y">Yes</span></td></tr>
+        <tr><td>D14</td><td>Rainy</td><td><span class="tag-n">No</span></td></tr>
+      </table>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-top:6px">OOB (unseen): D3, D11</div>
+    </div>
+
+  </div>
+  <p class="sec">On average, ~63% of original rows appear in each bootstrap sample; the remaining ~37% are out-of-bag (OOB) and serve as a free validation set for that tree.</p>
+</div>
+
+<!-- PAGE 2: Three trees -->
+<div id="trees" class="page">
+  <p class="sec">At each split, each tree only considers a <span class="hl-p">random subset of √4 ≈ 2 features</span> (feature subsampling). This forces variety — trees can't all pick Outlook first.</p>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">
+
+    <div class="tree-card">
+      <div class="tree-title" style="color:#085041">Tree 1</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Features available at root: Outlook, Humidity</div>
+      <svg width="100%" viewBox="0 0 200 170">
+        <defs><marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+        <rect x="40" y="5" width="120" height="32" rx="5" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+        <text class="ts" x="100" y="25" text-anchor="middle" style="fill:#085041;font-weight:500">Outlook?</text>
+        <line x1="65" y1="37" x2="30" y2="75" stroke="#0F6E56" stroke-width="0.8" marker-end="url(#a1)" fill="none"/>
+        <line x1="100" y1="37" x2="100" y2="75" stroke="#0F6E56" stroke-width="0.8" marker-end="url(#a1)" fill="none"/>
+        <line x1="135" y1="37" x2="170" y2="75" stroke="#0F6E56" stroke-width="0.8" marker-end="url(#a1)" fill="none"/>
+        <text class="ts" x="44" y="62" text-anchor="middle" style="fill:#888780;font-size:10px">sunny</text>
+        <text class="ts" x="100" y="62" text-anchor="middle" style="fill:#888780;font-size:10px">over.</text>
+        <text class="ts" x="158" y="62" text-anchor="middle" style="fill:#888780;font-size:10px">rainy</text>
+        <rect x="5" y="75" width="60" height="28" rx="4" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+        <text class="ts" x="35" y="90" text-anchor="middle" style="fill:#3C3489;font-weight:500">Humidity?</text>
+        <rect x="75" y="75" width="50" height="28" rx="4" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+        <text class="ts" x="100" y="90" text-anchor="middle" style="fill:#27500A;font-weight:500">Yes</text>
+        <rect x="145" y="75" width="50" height="28" rx="4" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+        <text class="ts" x="170" y="90" text-anchor="middle" style="fill:#3C3489;font-weight:500">Windy?</text>
+        <line x1="22" y1="103" x2="12" y2="130" stroke="#534AB7" stroke-width="0.8" marker-end="url(#a1)" fill="none"/>
+        <line x1="48" y1="103" x2="58" y2="130" stroke="#534AB7" stroke-width="0.8" marker-end="url(#a1)" fill="none"/>
+        <rect x="2" y="130" width="26" height="26" rx="4" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+        <text class="ts" x="15" y="147" text-anchor="middle" style="fill:#791F1F;font-weight:500">No</text>
+        <rect x="42" y="130" width="28" height="26" rx="4" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+        <text class="ts" x="56" y="147" text-anchor="middle" style="fill:#27500A;font-weight:500">Yes</text>
+        <line x1="158" y1="103" x2="148" y2="130" stroke="#534AB7" stroke-width="0.8" marker-end="url(#a1)" fill="none"/>
+        <line x1="182" y1="103" x2="190" y2="130" stroke="#534AB7" stroke-width="0.8" marker-end="url(#a1)" fill="none"/>
+        <rect x="130" y="130" width="28" height="26" rx="4" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+        <text class="ts" x="144" y="147" text-anchor="middle" style="fill:#27500A;font-weight:500">Yes</text>
+        <rect x="172" y="130" width="26" height="26" rx="4" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+        <text class="ts" x="185" y="147" text-anchor="middle" style="fill:#791F1F;font-weight:500">No</text>
+        <text class="ts" x="20" y="122" text-anchor="middle" style="fill:#888780;font-size:10px">high</text>
+        <text class="ts" x="58" y="122" text-anchor="middle" style="fill:#888780;font-size:10px">norm</text>
+        <text class="ts" x="145" y="122" text-anchor="middle" style="fill:#888780;font-size:10px">no</text>
+        <text class="ts" x="188" y="122" text-anchor="middle" style="fill:#888780;font-size:10px">yes</text>
+      </svg>
+      <div style="font-size:11px;color:var(--color-text-secondary)">Root: Outlook (best of Outlook, Humidity)</div>
+    </div>
+
+    <div class="tree-card">
+      <div class="tree-title" style="color:#3C3489">Tree 2</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Features available at root: Humidity, Windy</div>
+      <svg width="100%" viewBox="0 0 200 140">
+        <defs><marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+        <rect x="35" y="5" width="130" height="32" rx="5" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+        <text class="ts" x="100" y="25" text-anchor="middle" style="fill:#3C3489;font-weight:500">Humidity?</text>
+        <line x1="75" y1="37" x2="50" y2="75" stroke="#534AB7" stroke-width="0.8" marker-end="url(#a2)" fill="none"/>
+        <line x1="125" y1="37" x2="150" y2="75" stroke="#534AB7" stroke-width="0.8" marker-end="url(#a2)" fill="none"/>
+        <text class="ts" x="48" y="62" text-anchor="middle" style="fill:#888780;font-size:10px">high</text>
+        <text class="ts" x="152" y="62" text-anchor="middle" style="fill:#888780;font-size:10px">normal</text>
+        <rect x="15" y="75" width="72" height="30" rx="4" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+        <text class="ts" x="51" y="94" text-anchor="middle" style="fill:#3C3489;font-weight:500">Outlook?</text>
+        <rect x="113" y="75" width="74" height="30" rx="4" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+        <text class="ts" x="150" y="94" text-anchor="middle" style="fill:#27500A;font-weight:500">Play = Yes</text>
+        <line x1="30" y1="105" x2="20" y2="125" stroke="#534AB7" stroke-width="0.8" marker-end="url(#a2)" fill="none"/>
+        <line x1="51" y1="105" x2="51" y2="125" stroke="#534AB7" stroke-width="0.8" marker-end="url(#a2)" fill="none"/>
+        <line x1="72" y1="105" x2="82" y2="125" stroke="#534AB7" stroke-width="0.8" marker-end="url(#a2)" fill="none"/>
+        <rect x="5" y="125" width="28" height="22" rx="3" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+        <text class="ts" x="19" y="140" text-anchor="middle" style="fill:#791F1F;font-weight:500">No</text>
+        <rect x="37" y="125" width="28" height="22" rx="3" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+        <text class="ts" x="51" y="140" text-anchor="middle" style="fill:#27500A;font-weight:500">Yes</text>
+        <rect x="67" y="125" width="26" height="22" rx="3" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+        <text class="ts" x="80" y="140" text-anchor="middle" style="fill:#791F1F;font-weight:500">No</text>
+        <text class="ts" x="18" y="118" text-anchor="middle" style="fill:#888780;font-size:9px">sun</text>
+        <text class="ts" x="51" y="118" text-anchor="middle" style="fill:#888780;font-size:9px">ov.</text>
+        <text class="ts" x="82" y="118" text-anchor="middle" style="fill:#888780;font-size:9px">rain</text>
+      </svg>
+      <div style="font-size:11px;color:var(--color-text-secondary)">Root: Humidity (best of Humidity, Windy)</div>
+    </div>
+
+    <div class="tree-card">
+      <div class="tree-title" style="color:#633806">Tree 3</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Features available at root: Outlook, Temp</div>
+      <svg width="100%" viewBox="0 0 200 140">
+        <defs><marker id="a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+        <rect x="40" y="5" width="120" height="32" rx="5" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+        <text class="ts" x="100" y="25" text-anchor="middle" style="fill:#085041;font-weight:500">Outlook?</text>
+        <line x1="65" y1="37" x2="30" y2="75" stroke="#0F6E56" stroke-width="0.8" marker-end="url(#a3)" fill="none"/>
+        <line x1="100" y1="37" x2="100" y2="75" stroke="#0F6E56" stroke-width="0.8" marker-end="url(#a3)" fill="none"/>
+        <line x1="135" y1="37" x2="168" y2="75" stroke="#0F6E56" stroke-width="0.8" marker-end="url(#a3)" fill="none"/>
+        <text class="ts" x="42" y="62" text-anchor="middle" style="fill:#888780;font-size:10px">sunny</text>
+        <text class="ts" x="100" y="62" text-anchor="middle" style="fill:#888780;font-size:10px">over.</text>
+        <text class="ts" x="158" y="62" text-anchor="middle" style="fill:#888780;font-size:10px">rainy</text>
+        <rect x="5" y="75" width="54" height="30" rx="4" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+        <text class="ts" x="32" y="94" text-anchor="middle" style="fill:#633806;font-weight:500">Temp?</text>
+        <rect x="75" y="75" width="50" height="30" rx="4" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+        <text class="ts" x="100" y="94" text-anchor="middle" style="fill:#27500A;font-weight:500">Yes</text>
+        <rect x="143" y="75" width="54" height="30" rx="4" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+        <text class="ts" x="170" y="94" text-anchor="middle" style="fill:#633806;font-weight:500">Windy?</text>
+        <line x1="20" y1="105" x2="12" y2="125" stroke="#854F0B" stroke-width="0.8" marker-end="url(#a3)" fill="none"/>
+        <line x1="44" y1="105" x2="52" y2="125" stroke="#854F0B" stroke-width="0.8" marker-end="url(#a3)" fill="none"/>
+        <rect x="2" y="125" width="24" height="22" rx="3" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+        <text class="ts" x="14" y="140" text-anchor="middle" style="fill:#791F1F;font-weight:500">No</text>
+        <rect x="36" y="125" width="28" height="22" rx="3" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+        <text class="ts" x="50" y="140" text-anchor="middle" style="fill:#27500A;font-weight:500">Yes</text>
+        <text class="ts" x="13" y="118" text-anchor="middle" style="fill:#888780;font-size:9px">hot</text>
+        <text class="ts" x="52" y="118" text-anchor="middle" style="fill:#888780;font-size:9px">mild/cool</text>
+        <line x1="158" y1="105" x2="148" y2="125" stroke="#854F0B" stroke-width="0.8" marker-end="url(#a3)" fill="none"/>
+        <line x1="180" y1="105" x2="188" y2="125" stroke="#854F0B" stroke-width="0.8" marker-end="url(#a3)" fill="none"/>
+        <rect x="130" y="125" width="28" height="22" rx="3" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+        <text class="ts" x="144" y="140" text-anchor="middle" style="fill:#27500A;font-weight:500">Yes</text>
+        <rect x="172" y="125" width="26" height="22" rx="3" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+        <text class="ts" x="185" y="140" text-anchor="middle" style="fill:#791F1F;font-weight:500">No</text>
+        <text class="ts" x="145" y="118" text-anchor="middle" style="fill:#888780;font-size:9px">no</text>
+        <text class="ts" x="188" y="118" text-anchor="middle" style="fill:#888780;font-size:9px">yes</text>
+      </svg>
+      <div style="font-size:11px;color:var(--color-text-secondary)">Root: Outlook (best of Outlook, Temp)</div>
+    </div>
+  </div>
+
+  <p class="sec" style="margin-top:8px">Each tree sees different data AND different features at each split. Tree 2 never saw Outlook at the root — it had to rely on Humidity instead. This <span class="hl-p">de-correlation</span> is what makes averaging effective: errors don't all point the same way.</p>
+</div>
+
+<!-- PAGE 3: Majority vote -->
+<div id="vote" class="page">
+  <p class="sec">Given a new day to classify, each tree casts a vote. The majority wins. Let's try two new instances.</p>
+
+  <h3>New instance A: Outlook=Sunny, Humidity=Normal, Windy=No, Temp=Cool</h3>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0">
+    <div class="tree-card">
+      <div class="tree-title" style="color:#085041">Tree 1 vote</div>
+      <div class="sec">Sunny → Humidity? Normal → <span class="hl-g">Yes</span></div>
+    </div>
+    <div class="tree-card">
+      <div class="tree-title" style="color:#3C3489">Tree 2 vote</div>
+      <div class="sec">Humidity=Normal → <span class="hl-g">Yes</span></div>
+    </div>
+    <div class="tree-card">
+      <div class="tree-title" style="color:#633806">Tree 3 vote</div>
+      <div class="sec">Sunny → Temp=Cool → <span class="hl-g">Yes</span></div>
+    </div>
+  </div>
+  <div style="background:var(--color-background-secondary);border-radius:8px;padding:10px 14px;margin:6px 0">
+    <div style="font-size:13px;font-weight:500;margin-bottom:6px">Tally:</div>
+    <div class="vote-row"><span style="min-width:30px;color:#27500A;font-weight:500">Yes</span><div class="vote-bar-wrap"><div class="vote-bar" style="width:100%;background:#1D9E75"></div></div><span style="min-width:40px;text-align:right">3 / 3</span></div>
+    <div class="vote-row"><span style="min-width:30px;color:#791F1F;font-weight:500">No</span><div class="vote-bar-wrap"><div class="vote-bar" style="width:0%;background:#E24B4A"></div></div><span style="min-width:40px;text-align:right">0 / 3</span></div>
+    <div style="font-size:13px;font-weight:500;margin-top:8px">Final prediction: <span class="hl-g">Play = Yes</span> (unanimous)</div>
+  </div>
+
+  <hr>
+
+  <h3>New instance B: Outlook=Rainy, Humidity=High, Windy=Yes, Temp=Mild</h3>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0">
+    <div class="tree-card">
+      <div class="tree-title" style="color:#085041">Tree 1 vote</div>
+      <div class="sec">Rainy → Windy=Yes → <span class="hl-r">No</span></div>
+    </div>
+    <div class="tree-card">
+      <div class="tree-title" style="color:#3C3489">Tree 2 vote</div>
+      <div class="sec">Humidity=High → Rainy → <span class="hl-r">No</span></div>
+    </div>
+    <div class="tree-card">
+      <div class="tree-title" style="color:#633806">Tree 3 vote</div>
+      <div class="sec">Rainy → Windy=Yes → <span class="hl-r">No</span></div>
+    </div>
+  </div>
+  <div style="background:var(--color-background-secondary);border-radius:8px;padding:10px 14px;margin:6px 0">
+    <div style="font-size:13px;font-weight:500;margin-bottom:6px">Tally:</div>
+    <div class="vote-row"><span style="min-width:30px;color:#27500A;font-weight:500">Yes</span><div class="vote-bar-wrap"><div class="vote-bar" style="width:0%;background:#1D9E75"></div></div><span style="min-width:40px;text-align:right">0 / 3</span></div>
+    <div class="vote-row"><span style="min-width:30px;color:#791F1F;font-weight:500">No</span><div class="vote-bar-wrap"><div class="vote-bar" style="width:100%;background:#E24B4A"></div></div><span style="min-width:40px;text-align:right">3 / 3</span></div>
+    <div style="font-size:13px;font-weight:500;margin-top:8px">Final prediction: <span class="hl-r">Play = No</span> (unanimous)</div>
+  </div>
+
+  <p class="sec" style="margin-top:8px">With more trees (e.g. 100 or 500), votes are rarely unanimous — the majority rule absorbs individual tree errors and gives a stable prediction.</p>
+</div>
+
+<!-- PAGE 4: Feature importance -->
+<div id="fi" class="page">
+  <p class="sec"><span class="hl-b">Feature importance</span> (Mean Decrease in Impurity) counts how much each feature reduces entropy across all splits in all trees, weighted by the number of samples reaching each split.</p>
+
+  <h3>Counting splits across all 3 trees</h3>
+  <table style="margin-bottom:12px">
+    <tr><th>Feature</th><th>Used as split in Tree 1</th><th>Used in Tree 2</th><th>Used in Tree 3</th><th>Total uses</th></tr>
+    <tr><td>Outlook</td><td style="color:#27500A">Root + deeper</td><td style="color:#27500A">Sub-split</td><td style="color:#27500A">Root + deeper</td><td><strong>High</strong></td></tr>
+    <tr><td>Humidity</td><td style="color:#27500A">Sub-split</td><td style="color:#27500A">Root</td><td style="color:#888780">Not used</td><td><strong>Medium</strong></td></tr>
+    <tr><td>Windy</td><td style="color:#27500A">Sub-split</td><td style="color:#888780">Not used</td><td style="color:#27500A">Sub-split</td><td><strong>Medium</strong></td></tr>
+    <tr><td>Temperature</td><td style="color:#888780">Not used</td><td style="color:#888780">Not used</td><td style="color:#27500A">Sub-split</td><td><strong>Low</strong></td></tr>
+  </table>
+
+  <h3>Approximate feature importance scores</h3>
+  <div class="fi-row"><span style="min-width:90px">Outlook</span><div class="fi-bar-wrap"><div class="fi-bar" style="width:100%"></div></div><span style="min-width:50px;text-align:right">0.42</span></div>
+  <div class="fi-row"><span style="min-width:90px">Humidity</span><div class="fi-bar-wrap"><div class="fi-bar" style="width:60%"></div></div><span style="min-width:50px;text-align:right">0.25</span></div>
+  <div class="fi-row"><span style="min-width:90px">Windy</span><div class="fi-bar-wrap"><div class="fi-bar" style="width:52%"></div></div><span style="min-width:50px;text-align:right">0.22</span></div>
+  <div class="fi-row"><span style="min-width:90px">Temperature</span><div class="fi-bar-wrap"><div class="fi-bar" style="width:26%"></div></div><span style="min-width:50px;text-align:right">0.11</span></div>
+
+  <p class="sec" style="margin-top:10px"><span class="hl-g">Outlook</span> is the most important feature — consistent with our single decision tree where it was always the root. Temperature is the least important, which also matches: it was never needed when better features were available. With 100+ trees these scores stabilise and become very reliable.</p>
+</div>
+
+<!-- PAGE 5: OOB error -->
+<div id="oob" class="page">
+  <p class="sec">Each instance is left out of ~37% of trees. Those trees can predict it without having trained on it — giving a <span class="hl-b">free, unbiased validation estimate</span> called the OOB error.</p>
+
+  <h3>Which tree can evaluate which day?</h3>
+  <table>
+    <tr><th>Day</th><th>Play?</th><th>OOB for tree(s)</th><th>Tree prediction</th><th>Correct?</th></tr>
+    <tr><td>D1</td><td><span class="tag-n">No</span></td><td>Tree 2</td><td><span class="tag-n">No</span> (Sunny+High Hum → No)</td><td style="color:#27500A">✓</td></tr>
+    <tr><td>D2</td><td><span class="tag-n">No</span></td><td>Tree 1</td><td><span class="tag-n">No</span> (Sunny+High Hum → No)</td><td style="color:#27500A">✓</td></tr>
+    <tr><td>D3</td><td><span class="tag-y">Yes</span></td><td>Tree 3</td><td><span class="tag-y">Yes</span> (Overcast → Yes)</td><td style="color:#27500A">✓</td></tr>
+    <tr><td>D4</td><td><span class="tag-y">Yes</span></td><td>Tree 2</td><td><span class="tag-y">Yes</span> (Rainy+Normal Hum → Yes)</td><td style="color:#27500A">✓</td></tr>
+    <tr><td>D5</td><td><span class="tag-y">Yes</span></td><td>Tree 1</td><td><span class="tag-y">Yes</span> (Rainy+not Windy → Yes)</td><td style="color:#27500A">✓</td></tr>
+    <tr><td>D11</td><td><span class="tag-y">Yes</span></td><td>Tree 3</td><td><span class="tag-y">Yes</span> (Sunny+Normal Hum → Yes)</td><td style="color:#27500A">✓</td></tr>
+  </table>
+
+  <div style="background:var(--color-background-secondary);border-radius:8px;padding:10px 14px;margin:12px 0">
+    <div style="font-size:13px;font-weight:500;margin-bottom:4px">OOB accuracy on these 6 days: 6/6 = 100%</div>
+    <div class="sec">With only 3 trees and 14 instances this is optimistic — in practice OOB error with 100+ trees closely approximates cross-validation accuracy without the extra computational cost.</div>
+  </div>
+
+  <h3>Why OOB matters</h3>
+  <div style="font-size:13px;line-height:1.8;color:var(--color-text-secondary)">
+    <span class="hl-g">No need for a separate validation set</span> — you get validation for free from the training process itself.<br>
+    <span class="hl-b">Equivalent to leave-one-out cross-validation</span> as the number of trees grows large.<br>
+    <span class="hl-a">Use it to tune hyperparameters</span> (e.g. max_depth, n_estimators) without touching your test set.
+  </div>
+
+  <hr>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+    <button onclick="sendPrompt('How does XGBoost differ from Random Forest using this same tennis dataset?')">Illustrate XGBoost on this dataset ↗</button>
+    <button onclick="sendPrompt('What is the difference between Gini impurity and entropy for splitting?')">Gini vs entropy ↗</button>
+    <button onclick="sendPrompt('How do I choose the number of trees in a random forest?')">How many trees to use? ↗</button>
+  </div>
+</div>
+
+<script>
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>

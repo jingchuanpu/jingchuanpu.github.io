@@ -1,0 +1,367 @@
+
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font-sans, sans-serif); font-size: 13px; color: var(--color-text-primary); }
+.stepper { padding: 0 1rem 1rem; }
+.progress { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; padding-top: 1rem; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-border-secondary); cursor: pointer; transition: background .2s; flex-shrink: 0; }
+.dot.active { background: #1D9E75; }
+.dot.done { background: #9FE1CB; }
+.step-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.step-title { font-size: 15px; font-weight: 500; }
+.nav { display: flex; gap: 8px; }
+button { font-size: 13px; padding: 5px 14px; border-radius: 6px; border: 0.5px solid var(--color-border-secondary); background: transparent; color: var(--color-text-primary); cursor: pointer; }
+button:hover { background: var(--color-background-secondary); }
+button:disabled { opacity: 0.35; cursor: default; }
+.formula { background: var(--color-background-secondary); border-radius: 6px; padding: 8px 12px; font-family: var(--font-mono, monospace); font-size: 12px; margin: 6px 0; line-height: 1.85; }
+.hl  { background: #FAEEDA; color: #633806; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.hl-g{ background: #EAF3DE; color: #27500A; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.hl-b{ background: #E6F1FB; color: #0C447C; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.hl-r{ background: #FCEBEB; color: #791F1F; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.hl-t{ background: #E1F5EE; color: #085041; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.sec { color: var(--color-text-secondary); margin: 4px 0 6px; }
+.gain-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+.gain-bar-wrap { flex: 1; height: 8px; background: var(--color-background-secondary); border-radius: 4px; overflow: hidden; }
+.gain-bar { height: 100%; border-radius: 4px; }
+.badge { font-size: 11px; padding: 1px 6px; border-radius: 3px; font-weight: 500; }
+.badge-win { background: #EAF3DE; color: #27500A; }
+.badge-no  { background: var(--color-background-secondary); color: var(--color-text-secondary); }
+hr { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 10px 0; }
+.leaf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 8px; }
+.leaf-card { border-radius: 8px; padding: 8px 10px; border: 0.5px solid var(--color-border-tertiary); }
+.leaf-card.pure-yes { background: #EAF3DE; border-color: #3B6D11; }
+.leaf-card.pure-no  { background: #FCEBEB; border-color: #A32D2D; }
+.leaf-card.impure   { background: #FAEEDA; border-color: #854F0B; }
+.leaf-label { font-weight: 500; font-size: 12px; margin-bottom: 3px; }
+.leaf-data  { font-size: 11px; color: var(--color-text-secondary); }
+.step-content { min-height: 300px; }
+.sub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 8px 0; }
+.sub-card { background: var(--color-background-secondary); border-radius: 6px; padding: 8px 10px; }
+.sub-card-title { font-weight: 500; font-size: 12px; margin-bottom: 4px; }
+.days-tag { display: inline-block; font-size: 11px; background: var(--color-background-primary); border-radius: 3px; padding: 1px 5px; margin: 1px; border: 0.5px solid var(--color-border-tertiary); }
+</style>
+
+<div class="stepper">
+  <div class="progress" id="dots"></div>
+  <div class="step-header">
+    <div class="step-title" id="step-title"></div>
+    <div class="nav">
+      <button id="btn-prev" onclick="go(-1)">← Prev</button>
+      <button id="btn-next" onclick="go(1)">Next →</button>
+    </div>
+  </div>
+  <div class="step-content" id="step-content"></div>
+</div>
+
+<script>
+const steps = [
+  {
+    title: "Step 0 — full dataset (14 instances)",
+    render: () => `
+      <p class="sec">14 days, 4 features, target = Play? (9 Yes, 5 No)</p>
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <tr style="background:var(--color-background-secondary)">
+          <th style="padding:5px 8px;text-align:left;border-bottom:0.5px solid var(--color-border-secondary)">Day</th>
+          <th style="padding:5px 8px;text-align:left;border-bottom:0.5px solid var(--color-border-secondary)">Outlook</th>
+          <th style="padding:5px 8px;text-align:left;border-bottom:0.5px solid var(--color-border-secondary)">Temp</th>
+          <th style="padding:5px 8px;text-align:left;border-bottom:0.5px solid var(--color-border-secondary)">Humidity</th>
+          <th style="padding:5px 8px;text-align:left;border-bottom:0.5px solid var(--color-border-secondary)">Windy</th>
+          <th style="padding:5px 8px;text-align:left;border-bottom:0.5px solid var(--color-border-secondary)">Play?</th>
+        </tr>
+        ${[
+          [1,'Sunny','Hot','High','No','No'],
+          [2,'Sunny','Hot','High','Yes','No'],
+          [3,'Overcast','Hot','High','No','Yes'],
+          [4,'Rainy','Mild','High','No','Yes'],
+          [5,'Rainy','Cool','Normal','No','Yes'],
+          [6,'Rainy','Cool','Normal','Yes','No'],
+          [7,'Overcast','Cool','Normal','Yes','Yes'],
+          [8,'Sunny','Mild','High','No','No'],
+          [9,'Sunny','Cool','Normal','No','Yes'],
+          [10,'Rainy','Mild','Normal','No','Yes'],
+          [11,'Sunny','Mild','Normal','Yes','Yes'],
+          [12,'Overcast','Mild','High','Yes','Yes'],
+          [13,'Overcast','Hot','Normal','No','Yes'],
+          [14,'Rainy','Mild','High','Yes','No'],
+        ].map(r => `<tr style="border-bottom:0.5px solid var(--color-border-tertiary)">
+          <td style="padding:4px 8px">${r[0]}</td>
+          <td style="padding:4px 8px">${r[1]}</td>
+          <td style="padding:4px 8px">${r[2]}</td>
+          <td style="padding:4px 8px">${r[3]}</td>
+          <td style="padding:4px 8px">${r[4]}</td>
+          <td style="padding:4px 8px;font-weight:500;color:${r[5]==='Yes'?'#27500A':'#791F1F'}">${r[5]}</td>
+        </tr>`).join('')}
+      </table></div>
+    `
+  },
+  {
+    title: "Step 1 — root entropy H(S)",
+    render: () => `
+      <p class="sec">The whole dataset: 9 Yes, 5 No out of 14</p>
+      <div class="formula">
+        H(S) = −(9/14)·ln(9/14) − (5/14)·ln(5/14)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −0.6429·(−0.4418) − 0.3571·(−1.0296)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= 0.2840 + 0.3677<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="hl">0.6517 nats</span>
+      </div>
+      <p class="sec">This is our starting impurity. We now test every feature and pick the split that reduces this the most.</p>
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <div style="flex:1;background:var(--color-background-secondary);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:20px;font-weight:500">0.6517</div><div class="sec">root entropy (nats)</div>
+        </div>
+        <div style="flex:1;background:var(--color-background-secondary);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:20px;font-weight:500;color:#27500A">9 Yes</div><div class="sec">play outside</div>
+        </div>
+        <div style="flex:1;background:var(--color-background-secondary);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:20px;font-weight:500;color:#791F1F">5 No</div><div class="sec">stay inside</div>
+        </div>
+      </div>
+    `
+  },
+  {
+    title: "Step 2 — choose root split (IG for all 4 features)",
+    render: () => `
+      <p class="sec">Testing all four features on all 14 instances:</p>
+      <div class="formula">
+        Outlook:   H<sub>after</sub>=0.4808 → IG = 0.6517−0.4808 = <span class="hl-g">0.1709</span><br>
+        Humidity:  H<sub>after</sub>=0.5000 → IG = 0.6517−0.5000 = <span class="hl-b">0.1516</span><br>
+        Windy:     H<sub>after</sub>=0.6185 → IG = 0.6517−0.6185 = <span class="hl-r">0.0332</span><br>
+        Temp:      H<sub>after</sub>=0.6315 → IG = 0.6517−0.6315 = <span class="hl-r">0.0202</span>
+      </div>
+      <div class="gain-row"><span style="min-width:80px">Outlook</span><div class="gain-bar-wrap"><div class="gain-bar" style="width:100%;background:#1D9E75"></div></div><span>0.1709 <span class="badge badge-win">root node</span></span></div>
+      <div class="gain-row"><span style="min-width:80px">Humidity</span><div class="gain-bar-wrap"><div class="gain-bar" style="width:88%;background:#378ADD"></div></div><span>0.1516</span></div>
+      <div class="gain-row"><span style="min-width:80px">Windy</span><div class="gain-bar-wrap"><div class="gain-bar" style="width:19%;background:#D85A30"></div></div><span>0.0332</span></div>
+      <div class="gain-row"><span style="min-width:80px">Temp</span><div class="gain-bar-wrap"><div class="gain-bar" style="width:12%;background:#D85A30"></div></div><span>0.0202</span></div>
+      <hr>
+      <p class="sec"><span class="hl-g">Outlook</span> becomes the root. It creates 3 branches:</p>
+      <div class="leaf-grid">
+        <div class="leaf-card impure"><div class="leaf-label">Sunny (days 1,2,8,9,11)</div><div class="leaf-data">2 Yes, 3 No — needs splitting</div></div>
+        <div class="leaf-card pure-yes"><div class="leaf-label">Overcast (days 3,7,12,13)</div><div class="leaf-data">4 Yes, 0 No — PURE → Yes</div></div>
+        <div class="leaf-card impure"><div class="leaf-label">Rainy (days 4,5,6,10,14)</div><div class="leaf-data">3 Yes, 2 No — needs splitting</div></div>
+      </div>
+    `
+  },
+  {
+    title: "Step 3 — Sunny branch: choose best split",
+    render: () => `
+      <p class="sec">Sunny subset: days 1, 2, 8, 9, 11 → 2 Yes, 3 No</p>
+      <div class="formula">
+        H(sunny) = −(2/5)·ln(2/5)−(3/5)·ln(3/5) = <span class="hl">0.6730 nats</span>
+      </div>
+      <p class="sec">Test remaining features — Humidity, Temp, Windy:</p>
+      <div class="sub-grid">
+        <div class="sub-card">
+          <div class="sub-card-title">Humidity</div>
+          <div style="font-size:11px;line-height:1.7">
+            High (1,2,8): 0Y,3N → H=0<br>
+            Normal (9,11): 2Y,0N → H=0<br>
+            H<sub>after</sub>=0 → <span class="hl-g">IG=0.6730</span>
+          </div>
+        </div>
+        <div class="sub-card">
+          <div class="sub-card-title">Temperature</div>
+          <div style="font-size:11px;line-height:1.7">
+            Hot (1,2): 0Y,2N → H=0<br>
+            Mild (8,11): 1Y,1N → H=0.693<br>
+            Cool (9): 1Y,0N → H=0<br>
+            H<sub>after</sub>=0.277 → <span class="hl-b">IG=0.396</span>
+          </div>
+        </div>
+        <div class="sub-card">
+          <div class="sub-card-title">Windy</div>
+          <div style="font-size:11px;line-height:1.7">
+            Yes (2,11): 1Y,1N → H=0.693<br>
+            No (1,8,9): 1Y,2N → H=0.637<br>
+            H<sub>after</sub>=0.655 → <span class="hl-r">IG=0.018</span>
+          </div>
+        </div>
+      </div>
+      <hr>
+      <div class="gain-row"><span style="min-width:80px">Humidity</span><div class="gain-bar-wrap"><div class="gain-bar" style="width:100%;background:#1D9E75"></div></div><span>0.6730 <span class="badge badge-win">chosen</span></span></div>
+      <div class="gain-row"><span style="min-width:80px">Temp</span><div class="gain-bar-wrap"><div class="gain-bar" style="width:59%;background:#378ADD"></div></div><span>0.3960</span></div>
+      <div class="gain-row"><span style="min-width:80px">Windy</span><div class="gain-bar-wrap"><div class="gain-bar" style="width:3%;background:#D85A30"></div></div><span>0.0180</span></div>
+      <hr>
+      <p class="sec"><span class="hl-g">Humidity</span> perfectly separates the sunny subset → both leaves are pure!</p>
+      <div class="leaf-grid">
+        <div class="leaf-card pure-no"><div class="leaf-label">Sunny + High humidity</div><div class="leaf-data">Days 1,2,8 → 0 Yes, 3 No<br>PURE → Play = No</div></div>
+        <div class="leaf-card pure-yes"><div class="leaf-label">Sunny + Normal humidity</div><div class="leaf-data">Days 9,11 → 2 Yes, 0 No<br>PURE → Play = Yes</div></div>
+      </div>
+    `
+  },
+  {
+    title: "Step 4 — Rainy branch: choose best split",
+    render: () => `
+      <p class="sec">Rainy subset: days 4, 5, 6, 10, 14 → 3 Yes, 2 No</p>
+      <div class="formula">
+        H(rainy) = −(3/5)·ln(3/5)−(2/5)·ln(2/5) = <span class="hl">0.6730 nats</span>
+      </div>
+      <p class="sec">Test remaining features — Humidity, Temp, Windy:</p>
+      <div class="sub-grid">
+        <div class="sub-card">
+          <div class="sub-card-title">Windy</div>
+          <div style="font-size:11px;line-height:1.7">
+            Yes (6,14): 0Y,2N → H=0<br>
+            No (4,5,10): 3Y,0N → H=0<br>
+            H<sub>after</sub>=0 → <span class="hl-g">IG=0.6730</span>
+          </div>
+        </div>
+        <div class="sub-card">
+          <div class="sub-card-title">Humidity</div>
+          <div style="font-size:11px;line-height:1.7">
+            High (4,14): 1Y,1N → H=0.693<br>
+            Normal (5,6,10): 2Y,1N → H=0.637<br>
+            H<sub>after</sub>=0.655 → <span class="hl-r">IG=0.018</span>
+          </div>
+        </div>
+        <div class="sub-card">
+          <div class="sub-card-title">Temperature</div>
+          <div style="font-size:11px;line-height:1.7">
+            Mild (4,10,14): 2Y,1N → H=0.637<br>
+            Cool (5,6): 1Y,1N → H=0.693<br>
+            H<sub>after</sub>=0.655 → <span class="hl-r">IG=0.018</span>
+          </div>
+        </div>
+      </div>
+      <hr>
+      <div class="gain-row"><span style="min-width:80px">Windy</span><div class="gain-bar-wrap"><div class="gain-bar" style="width:100%;background:#1D9E75"></div></div><span>0.6730 <span class="badge badge-win">chosen</span></span></div>
+      <div class="gain-row"><span style="min-width:80px">Humidity</span><div class="gain-bar-wrap"><div class="gain-bar" style="width:3%;background:#D85A30"></div></div><span>0.0180</span></div>
+      <div class="gain-row"><span style="min-width:80px">Temp</span><div class="gain-bar-wrap"><div class="gain-bar" style="width:3%;background:#D85A30"></div></div><span>0.0180</span></div>
+      <hr>
+      <p class="sec"><span class="hl-g">Windy</span> perfectly separates the rainy subset → both leaves are pure!</p>
+      <div class="leaf-grid">
+        <div class="leaf-card pure-yes"><div class="leaf-label">Rainy + Not windy</div><div class="leaf-data">Days 4,5,10 → 3 Yes, 0 No<br>PURE → Play = Yes</div></div>
+        <div class="leaf-card pure-no"><div class="leaf-label">Rainy + Windy</div><div class="leaf-data">Days 6,14 → 0 Yes, 2 No<br>PURE → Play = No</div></div>
+      </div>
+    `
+  },
+  {
+    title: "Step 5 — final decision tree",
+    render: () => `
+      <p class="sec">All 5 leaves are pure. The tree is complete.</p>
+      <svg width="100%" viewBox="0 0 680 420">
+        <defs>
+          <marker id="arr2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+        <!-- Root: Outlook -->
+        <g class="c-teal">
+          <rect x="240" y="20" width="200" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="340" y="42" text-anchor="middle" dominant-baseline="central">Outlook?</text>
+        </g>
+        <!-- Branch lines from root -->
+        <line x1="260" y1="64" x2="100" y2="140" stroke="#1D9E75" stroke-width="1" marker-end="url(#arr2)" fill="none"/>
+        <line x1="340" y1="64" x2="340" y2="140" stroke="#1D9E75" stroke-width="1" marker-end="url(#arr2)" fill="none"/>
+        <line x1="420" y1="64" x2="580" y2="140" stroke="#1D9E75" stroke-width="1" marker-end="url(#arr2)" fill="none"/>
+        <!-- Branch labels -->
+        <text class="ts" x="158" y="98" text-anchor="middle">Sunny</text>
+        <text class="ts" x="340" y="110" text-anchor="middle">Overcast</text>
+        <text class="ts" x="522" y="98" text-anchor="middle">Rainy</text>
+        <!-- Overcast leaf: pure Yes -->
+        <g class="c-green">
+          <rect x="270" y="140" width="140" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="340" y="158" text-anchor="middle" dominant-baseline="central">Play = Yes</text>
+          <text class="ts" x="340" y="174" text-anchor="middle" dominant-baseline="central">4/4 pure</text>
+        </g>
+        <!-- Sunny: Humidity node -->
+        <g class="c-purple">
+          <rect x="20" y="140" width="160" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="100" y="158" text-anchor="middle" dominant-baseline="central">Humidity?</text>
+          <text class="ts" x="100" y="174" text-anchor="middle" dominant-baseline="central">sunny subset</text>
+        </g>
+        <!-- Rainy: Windy node -->
+        <g class="c-purple">
+          <rect x="500" y="140" width="160" height="44" rx="8" stroke-width="0.5"/>
+          <text class="th" x="580" y="158" text-anchor="middle" dominant-baseline="central">Windy?</text>
+          <text class="ts" x="580" y="174" text-anchor="middle" dominant-baseline="central">rainy subset</text>
+        </g>
+        <!-- Humidity branches -->
+        <line x1="70"  y1="184" x2="50"  y2="280" stroke="#534AB7" stroke-width="1" marker-end="url(#arr2)" fill="none"/>
+        <line x1="130" y1="184" x2="160" y2="280" stroke="#534AB7" stroke-width="1" marker-end="url(#arr2)" fill="none"/>
+        <text class="ts" x="40" y="236" text-anchor="middle">High</text>
+        <text class="ts" x="168" y="236" text-anchor="middle">Normal</text>
+        <!-- Windy branches -->
+        <line x1="550" y1="184" x2="510" y2="280" stroke="#534AB7" stroke-width="1" marker-end="url(#arr2)" fill="none"/>
+        <line x1="610" y1="184" x2="650" y2="280" stroke="#534AB7" stroke-width="1" marker-end="url(#arr2)" fill="none"/>
+        <text class="ts" x="510" y="236" text-anchor="middle">No</text>
+        <text class="ts" x="650" y="236" text-anchor="middle">Yes</text>
+        <!-- Leaf: Sunny+High → No -->
+        <g class="c-red">
+          <rect x="10" y="280" width="120" height="50" rx="8" stroke-width="0.5"/>
+          <text class="th" x="70" y="300" text-anchor="middle" dominant-baseline="central">Play = No</text>
+          <text class="ts" x="70" y="318" text-anchor="middle" dominant-baseline="central">days 1,2,8</text>
+        </g>
+        <!-- Leaf: Sunny+Normal → Yes -->
+        <g class="c-green">
+          <rect x="110" y="280" width="120" height="50" rx="8" stroke-width="0.5"/>
+          <text class="th" x="170" y="300" text-anchor="middle" dominant-baseline="central">Play = Yes</text>
+          <text class="ts" x="170" y="318" text-anchor="middle" dominant-baseline="central">days 9,11</text>
+        </g>
+        <!-- Leaf: Rainy+No wind → Yes -->
+        <g class="c-green">
+          <rect x="450" y="280" width="120" height="50" rx="8" stroke-width="0.5"/>
+          <text class="th" x="510" y="300" text-anchor="middle" dominant-baseline="central">Play = Yes</text>
+          <text class="ts" x="510" y="318" text-anchor="middle" dominant-baseline="central">days 4,5,10</text>
+        </g>
+        <!-- Leaf: Rainy+Windy → No -->
+        <g class="c-red">
+          <rect x="590" y="280" width="80" height="50" rx="8" stroke-width="0.5"/>
+          <text class="th" x="630" y="300" text-anchor="middle" dominant-baseline="central">Play = No</text>
+          <text class="ts" x="630" y="318" text-anchor="middle" dominant-baseline="central">days 6,14</text>
+        </g>
+        <!-- Legend -->
+        <g class="c-teal"><rect x="40" y="375" width="12" height="12" rx="2" stroke-width="0.5"/></g>
+        <text class="ts" x="58" y="385">decision node</text>
+        <g class="c-green"><rect x="160" y="375" width="12" height="12" rx="2" stroke-width="0.5"/></g>
+        <text class="ts" x="178" y="385">leaf: Yes</text>
+        <g class="c-red"><rect x="260" y="375" width="12" height="12" rx="2" stroke-width="0.5"/></g>
+        <text class="ts" x="278" y="385">leaf: No</text>
+        <g class="c-purple"><rect x="340" y="375" width="12" height="12" rx="2" stroke-width="0.5"/></g>
+        <text class="ts" x="358" y="385">internal node</text>
+      </svg>
+    `
+  },
+  {
+    title: "Step 6 — reading the tree (5 rules)",
+    render: () => `
+      <p class="sec">The tree encodes exactly 5 classification rules:</p>
+      ${[
+        ['IF Outlook = Overcast', 'Play = Yes', '(always — 4/4)', 'pure-yes'],
+        ['IF Outlook = Sunny AND Humidity = High', 'Play = No', '(days 1,2,8 — 3/3)', 'pure-no'],
+        ['IF Outlook = Sunny AND Humidity = Normal', 'Play = Yes', '(days 9,11 — 2/2)', 'pure-yes'],
+        ['IF Outlook = Rainy AND Windy = No', 'Play = Yes', '(days 4,5,10 — 3/3)', 'pure-yes'],
+        ['IF Outlook = Rainy AND Windy = Yes', 'Play = No', '(days 6,14 — 2/2)', 'pure-no'],
+      ].map(([cond, result, note, cls]) => `
+        <div class="leaf-card ${cls}" style="margin:6px 0;border-radius:6px;padding:8px 12px">
+          <div style="font-size:12px;font-family:var(--font-mono,monospace)">${cond}</div>
+          <div style="font-size:12px;font-weight:500;margin-top:3px">THEN ${result} <span style="font-weight:400;color:var(--color-text-secondary)">${note}</span></div>
+        </div>`).join('')}
+      <hr>
+      <p class="sec" style="margin-top:6px">All 14 training instances are correctly classified. Depth = 2. The key insight: <span class="hl-g">Outlook</span> partitions best at the root, then <span class="hl-t">Humidity</span> resolves the sunny ambiguity and <span class="hl-t">Windy</span> resolves the rainy ambiguity. Temperature and Humidity (on rainy) were never needed.</p>
+    `
+  }
+];
+
+let cur = 0;
+function render() {
+  const s = steps[cur];
+  document.getElementById('step-title').textContent = s.title;
+  document.getElementById('step-content').innerHTML = s.render();
+  document.getElementById('btn-prev').disabled = cur === 0;
+  document.getElementById('btn-next').disabled = cur === steps.length - 1;
+  document.querySelectorAll('.dot').forEach((d, i) => {
+    d.classList.toggle('active', i === cur);
+    d.classList.toggle('done', i < cur);
+  });
+}
+function go(dir) { cur = Math.max(0, Math.min(steps.length - 1, cur + dir)); render(); }
+const dotsEl = document.getElementById('dots');
+steps.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot';
+  d.onclick = () => { cur = i; render(); };
+  dotsEl.appendChild(d);
+});
+render();
+</script>

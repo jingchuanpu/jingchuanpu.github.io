@@ -1,0 +1,221 @@
+
+<style>
+*{box-sizing:border-box}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+.word-token{display:inline-block;font-size:11px;font-weight:500;padding:3px 7px;border-radius:4px;margin:2px;border:1.5px solid transparent;transition:background .25s,color .25s,border-color .25s;cursor:default}
+.doc-block{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:9px 12px;margin-bottom:8px;border:0.5px solid var(--color-border-tertiary)}
+.doc-lbl{font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px}
+.tc-col{border-radius:var(--border-radius-md);padding:10px 12px;border:0.5px solid}
+.tc-a{background:#EEEDFE;border-color:#534AB7}
+.tc-b{background:#E1F5EE;border-color:#0F6E56}
+.tc-c{background:#FAEEDA;border-color:#854F0B}
+.tc-ttl{font-size:11px;font-weight:500;margin-bottom:7px}
+.ta{color:#3C3489}.tb{color:#085041}.tc{color:#633806}
+.wbar{display:flex;align-items:center;gap:5px;margin-bottom:4px}
+.wbl{font-size:11px;min-width:80px;color:var(--color-text-primary)}
+.wbt{flex:1;height:6px;border-radius:3px;background:var(--color-background-primary);overflow:hidden}
+.wbf{height:100%;border-radius:3px;transition:width .4s}
+.fa{background:#7F77DD}.fb{background:#1D9E75}.fc{background:#BA7517}
+.wbn{font-size:10px;min-width:20px;text-align:right;color:var(--color-text-secondary)}
+.stat-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.chip{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:5px 10px;border:0.5px solid var(--color-border-tertiary);font-size:12px;color:var(--color-text-secondary)}
+.chip span{font-weight:500;color:var(--color-text-primary);margin-left:3px}
+.insight{font-size:12px;color:var(--color-text-secondary);padding:8px 12px;border-left:2px solid var(--color-border-secondary);background:var(--color-background-secondary);border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;line-height:1.6;margin:10px 0}
+.conv-track{height:8px;background:var(--color-background-secondary);border-radius:4px;overflow:hidden;margin-bottom:4px;border:0.5px solid var(--color-border-tertiary)}
+.conv-fill{height:100%;border-radius:4px;background:#7F77DD;transition:width .4s}
+</style>
+
+<h2 class="sr-only">LDA Gibbs sampling on a larger 9-document corpus — watch three clean topics emerge from random noise as iterations progress</h2>
+
+<div style="font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:3px">9-document corpus · 3 topics · ~90 word tokens</div>
+<div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:12px">
+  <span style="background:#CECBF6;color:#26215C;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:500">purple = AI tech</span>&nbsp;
+  <span style="background:#9FE1CB;color:#04342C;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:500">green = finance</span>&nbsp;
+  <span style="background:#FAC775;color:#412402;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:500">amber = hype</span>
+</div>
+
+<div id="corpus-display"></div>
+
+<div class="stat-row">
+  <div class="chip">Iteration <span id="iter-count">0</span></div>
+  <div class="chip">Re-assignments <span id="reassign-count">—</span></div>
+  <div class="chip">Stability <span id="stability">—</span></div>
+</div>
+
+<div style="margin-bottom:6px">
+  <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:3px">Convergence progress</div>
+  <div class="conv-track"><div class="conv-fill" id="conv-bar" style="width:0%"></div></div>
+  <div style="font-size:10px;color:var(--color-text-secondary)" id="conv-label">Not started</div>
+</div>
+
+<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+  <button onclick="randomInit()">Randomize</button>
+  <button onclick="runN(1)">1 iteration</button>
+  <button onclick="runN(5)">5 iterations</button>
+  <button onclick="runN(20)">20 iterations</button>
+  <button onclick="convergeAll()">Converge fully</button>
+</div>
+
+<div style="font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px">Topic–word count distribution</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px">
+  <div class="tc-col tc-a"><div class="tc-ttl ta">Topic A — AI tech</div><div id="counts-a"></div></div>
+  <div class="tc-col tc-b"><div class="tc-ttl tb">Topic B — finance</div><div id="counts-b"></div></div>
+  <div class="tc-col tc-c"><div class="tc-ttl tc">Topic C — hype</div><div id="counts-c"></div></div>
+</div>
+
+<div class="insight" id="insight-text">Press "Randomize" to scatter words randomly, then step through iterations to watch three coherent topics crystallize.</div>
+
+<script>
+const T=['a','b','c'];
+const COL={a:{bg:'#CECBF6',fg:'#26215C',bd:'#7F77DD'},b:{bg:'#9FE1CB',fg:'#04342C',bd:'#1D9E75'},c:{bg:'#FAC775',fg:'#412402',bd:'#BA7517'}};
+const alpha=0.3, beta=0.1;
+
+const DOCS=[
+  {name:'Doc 1 — IBM Watson press release',
+   words:['AI','model','revolutionary','system','transform','innovative','AI','leading','platform','intelligent']},
+  {name:'Doc 2 — Zillow earnings call',
+   words:['revenue','market','growth','invest','profit','valuation','revenue','market','quarterly','forecast']},
+  {name:'Doc 3 — DeepMind benchmark report',
+   words:['model','data','precision','accuracy','benchmark','training','dataset','model','performance','evaluation']},
+  {name:'Doc 4 — Salesforce AI launch',
+   words:['AI','revolutionary','platform','innovative','transform','intelligent','AI','leading','system','disruptive']},
+  {name:'Doc 5 — Goldman Sachs outlook',
+   words:['market','revenue','growth','forecast','invest','profit','valuation','quarterly','equity','dividend']},
+  {name:'Doc 6 — OpenAI technical paper',
+   words:['model','training','dataset','accuracy','benchmark','precision','evaluation','data','parameters','inference']},
+  {name:'Doc 7 — Oracle AI product launch',
+   words:['AI','innovative','transform','platform','revolutionary','leading','intelligent','disruptive','AI','system']},
+  {name:'Doc 8 — JP Morgan annual report',
+   words:['revenue','profit','market','equity','dividend','invest','quarterly','growth','valuation','forecast']},
+  {name:'Doc 9 — Meta AI research',
+   words:['model','data','training','benchmark','accuracy','precision','dataset','inference','evaluation','parameters']},
+];
+
+const VOCAB=[...new Set(DOCS.flatMap(d=>d.words))];
+let assignments=[];
+let iterCount=0;
+let prevChanged=Infinity;
+let stableRuns=0;
+
+function initAssignments(){
+  assignments=DOCS.map(d=>d.words.map(()=>T[Math.floor(Math.random()*3)]));
+}
+
+function counts(){
+  const wc={};
+  VOCAB.forEach(w=>{wc[w]={a:0,b:0,c:0}});
+  const dc=DOCS.map(()=>({a:0,b:0,c:0}));
+  const tc={a:0,b:0,c:0};
+  DOCS.forEach((doc,di)=>doc.words.forEach((w,wi)=>{
+    const t=assignments[di][wi];
+    wc[w][t]++;dc[di][t]++;tc[t]++;
+  }));
+  return{wc,dc,tc};
+}
+
+function sampleOne(di,wi,wc,dc,tc){
+  const word=DOCS[di].words[wi];
+  const old=assignments[di][wi];
+  wc[word][old]--;dc[di][old]--;tc[old]--;
+  const V=VOCAB.length;
+  const probs=T.map(t=>(wc[word][t]+beta)/(tc[t]+V*beta)*(dc[di][t]+alpha));
+  const total=probs.reduce((a,b)=>a+b,0);
+  let r=Math.random()*total,chosen=T[0];
+  for(let i=0;i<T.length;i++){r-=probs[i];if(r<=0){chosen=T[i];break;}}
+  assignments[di][wi]=chosen;
+  wc[word][chosen]++;dc[di][chosen]++;tc[chosen]++;
+  return chosen!==old?1:0;
+}
+
+function runOneFullIter(){
+  const{wc,dc,tc}=counts();
+  let changed=0;
+  DOCS.forEach((doc,di)=>doc.words.forEach((_,wi)=>{changed+=sampleOne(di,wi,wc,dc,tc);}));
+  return changed;
+}
+
+function totalTokens(){return DOCS.reduce((s,d)=>s+d.words.length,0);}
+
+function stabilityPct(changed){
+  const total=totalTokens();
+  return Math.max(0,Math.round((1-changed/total)*100));
+}
+
+function updateUI(changed){
+  document.getElementById('iter-count').textContent=iterCount;
+  document.getElementById('reassign-count').textContent=changed===undefined?'—':changed;
+  const stab=changed===undefined?'—':stabilityPct(changed)+'%';
+  document.getElementById('stability').textContent=stab;
+  const pct=changed===undefined?0:Math.min(100,Math.round((1-changed/totalTokens())*100));
+  document.getElementById('conv-bar').style.width=pct+'%';
+  document.getElementById('conv-label').textContent=
+    changed===0?'Fully converged — no more re-assignments':
+    changed===undefined?'Not started':
+    `${pct}% stable — ${changed} token(s) still moving`;
+  renderCorpus();
+  renderCounts();
+}
+
+function renderCorpus(){
+  const el=document.getElementById('corpus-display');
+  el.innerHTML=DOCS.map((doc,di)=>
+    `<div class="doc-block"><div class="doc-lbl">${doc.name}</div><div>${
+      doc.words.map((w,wi)=>{
+        const t=assignments[di]?.[wi]||'a';
+        const c=COL[t];
+        return `<span class="word-token" style="background:${c.bg};color:${c.fg};border-color:${c.bd}">${w}</span>`;
+      }).join('')
+    }</div></div>`
+  ).join('');
+}
+
+function renderCounts(){
+  const{wc}=counts();
+  T.forEach(t=>{
+    const el=document.getElementById('counts-'+t);
+    const sorted=VOCAB.map(w=>({w,n:wc[w][t]})).sort((a,b)=>b.n-a.n).slice(0,7);
+    const max=Math.max(...sorted.map(x=>x.n),1);
+    el.innerHTML=sorted.map(({w,n})=>
+      `<div class="wbar"><span class="wbl">${w}</span><div class="wbt"><div class="wbf f${t}" style="width:${Math.round(n/max*100)}%"></div></div><span class="wbn">${n}</span></div>`
+    ).join('');
+  });
+}
+
+function insightMsg(iter,changed){
+  if(iter===0) return 'Random start: assignments are noise. Hit "1 iteration" to begin.';
+  if(changed===0) return `Fully converged after ${iter} iterations. Each topic is now dominated by semantically coherent words — AI tech (model, data, accuracy), finance (revenue, market, growth), hype (revolutionary, innovative, transform).`;
+  const pct=stabilityPct(changed);
+  if(pct<40) return `Iteration ${iter}: still chaotic (${pct}% stable). Words are bouncing between topics as early pressure builds.`;
+  if(pct<70) return `Iteration ${iter}: structure emerging (${pct}% stable). Watch "revolutionary" and "innovative" consolidate together, while "revenue" and "market" migrate toward finance.`;
+  if(pct<90) return `Iteration ${iter}: almost there (${pct}% stable). A few words are still on the fence — they appear across multiple doc types.`;
+  return `Iteration ${iter}: nearly converged (${pct}% stable). Topic boundaries are sharp and stable.`;
+}
+
+function randomInit(){
+  initAssignments();
+  iterCount=0;prevChanged=Infinity;stableRuns=0;
+  updateUI(undefined);
+  document.getElementById('insight-text').textContent=insightMsg(0,undefined);
+}
+
+function runN(n){
+  if(!assignments.length){initAssignments();}
+  let lastChanged=0;
+  for(let i=0;i<n;i++){lastChanged=runOneFullIter();iterCount++;}
+  updateUI(lastChanged);
+  document.getElementById('insight-text').textContent=insightMsg(iterCount,lastChanged);
+}
+
+function convergeAll(){
+  if(!assignments.length) initAssignments();
+  let changed=1,safety=0;
+  while((changed>0||safety<5)&&safety<500){
+    changed=runOneFullIter();iterCount++;safety++;
+    if(changed===0) break;
+  }
+  updateUI(changed);
+  document.getElementById('insight-text').textContent=insightMsg(iterCount,changed);
+}
+
+randomInit();
+</script>

@@ -1,0 +1,345 @@
+
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font-sans, sans-serif); font-size: 13px; color: var(--color-text-primary); }
+.nav { display: flex; gap: 0; border-bottom: 0.5px solid var(--color-border-secondary); margin: 0 1rem; overflow-x: auto; }
+.nav-btn { padding: 9px 13px; font-size: 12px; cursor: pointer; border: none; background: transparent; color: var(--color-text-secondary); border-bottom: 2px solid transparent; margin-bottom: -0.5px; white-space: nowrap; transition: all .15s; }
+.nav-btn.active { color: var(--color-text-primary); border-bottom-color: #BA7517; font-weight: 500; }
+.page { display: none; padding: 1rem; }
+.page.active { display: block; }
+.sec { font-size: 13px; color: var(--color-text-secondary); margin: 0 0 8px; line-height: 1.65; }
+h3 { font-size: 14px; font-weight: 500; margin: 14px 0 6px; }
+.hl-g { background: #EAF3DE; color: #27500A; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.hl-r { background: #FCEBEB; color: #791F1F; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.hl-b { background: #E6F1FB; color: #0C447C; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.hl-a { background: #FAEEDA; color: #633806; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.hl-p { background: #EEEDFE; color: #3C3489; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.hl-t { background: #E1F5EE; color: #085041; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+hr { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 12px 0; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { background: var(--color-background-secondary); padding: 5px 7px; text-align: left; border-bottom: 0.5px solid var(--color-border-secondary); font-weight: 500; }
+td { padding: 4px 7px; border-bottom: 0.5px solid var(--color-border-tertiary); vertical-align: middle; }
+.tag-y { background: #EAF3DE; color: #27500A; padding: 1px 6px; border-radius: 3px; font-weight: 500; font-size: 11px; }
+.tag-n { background: #FCEBEB; color: #791F1F; padding: 1px 6px; border-radius: 3px; font-weight: 500; font-size: 11px; }
+.tag-err { background: #FAEEDA; color: #633806; padding: 1px 6px; border-radius: 3px; font-weight: 500; font-size: 11px; }
+.card { border: 0.5px solid var(--color-border-secondary); border-radius: 8px; padding: 10px 12px; background: var(--color-background-secondary); margin: 8px 0; }
+.card-title { font-weight: 500; font-size: 13px; margin-bottom: 5px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 8px 0; }
+.formula { background: var(--color-background-secondary); border-radius: 6px; padding: 8px 12px; font-family: var(--font-mono, monospace); font-size: 12px; margin: 6px 0; line-height: 1.85; }
+.diff-row { display: flex; gap: 10px; margin: 6px 0; align-items: flex-start; }
+.diff-label { width: 90px; font-weight: 500; font-size: 12px; flex-shrink: 0; }
+.diff-rf { flex: 1; font-size: 12px; color: var(--color-text-secondary); padding: 6px 8px; background: #E1F5EE; border-radius: 5px; }
+.diff-xgb { flex: 1; font-size: 12px; color: var(--color-text-secondary); padding: 6px 8px; background: #FAEEDA; border-radius: 5px; }
+.score-pill { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; font-weight: 500; }
+.residual-pos { color: #27500A; font-weight: 500; }
+.residual-neg { color: #791F1F; font-weight: 500; }
+.residual-zero { color: #888780; }
+</style>
+
+<div style="padding:1rem 1rem 0">
+  <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:3px">XGBoost vs Random Forest — Play Tennis (14 days)</div>
+  <div style="font-size:17px;font-weight:500">Sequential error correction vs parallel averaging</div>
+</div>
+
+<div class="nav" style="margin-top:10px">
+  <button class="nav-btn active" onclick="show('key')">The key difference</button>
+  <button class="nav-btn" onclick="show('r0')">Round 0 — initial guess</button>
+  <button class="nav-btn" onclick="show('r1')">Round 1 — first tree</button>
+  <button class="nav-btn" onclick="show('r2')">Round 2 — second tree</button>
+  <button class="nav-btn" onclick="show('r3')">Round 3 — third tree</button>
+  <button class="nav-btn" onclick="show('final')">Final ensemble</button>
+  <button class="nav-btn" onclick="show('cmp')">Side-by-side</button>
+</div>
+
+<!-- KEY DIFFERENCE -->
+<div id="key" class="page active">
+  <p class="sec">Both methods use multiple decision trees. The fundamental difference is <em>how</em> the trees relate to each other.</p>
+  <svg width="100%" viewBox="0 0 680 230">
+    <defs><marker id="arw" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <text class="th" x="170" y="22" text-anchor="middle" style="fill:#085041">Random Forest</text>
+    <text class="ts" x="170" y="38" text-anchor="middle" style="fill:#0F6E56">parallel — independent trees</text>
+    <rect x="20"  y="50" width="80" height="36" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+    <text class="ts" x="60"  y="72" text-anchor="middle" style="fill:#085041;font-weight:500">Tree 1</text>
+    <rect x="115" y="50" width="80" height="36" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+    <text class="ts" x="155" y="72" text-anchor="middle" style="fill:#085041;font-weight:500">Tree 2</text>
+    <rect x="210" y="50" width="80" height="36" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+    <text class="ts" x="250" y="72" text-anchor="middle" style="fill:#085041;font-weight:500">Tree 3</text>
+    <line x1="60"  y1="86" x2="155" y2="120" stroke="#1D9E75" stroke-width="0.8" marker-end="url(#arw)" fill="none"/>
+    <line x1="155" y1="86" x2="155" y2="120" stroke="#1D9E75" stroke-width="0.8" marker-end="url(#arw)" fill="none"/>
+    <line x1="250" y1="86" x2="155" y2="120" stroke="#1D9E75" stroke-width="0.8" marker-end="url(#arw)" fill="none"/>
+    <rect x="100" y="120" width="110" height="36" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+    <text class="ts" x="155" y="142" text-anchor="middle" style="fill:#27500A;font-weight:500">Majority vote</text>
+    <text class="ts" x="155" y="185" text-anchor="middle" style="fill:#888780">Each tree trained independently on a</text>
+    <text class="ts" x="155" y="200" text-anchor="middle" style="fill:#888780">bootstrap sample. Errors are averaged out.</text>
+
+    <line x1="340" y1="10" x2="340" y2="220" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+
+    <text class="th" x="510" y="22" text-anchor="middle" style="fill:#633806">XGBoost</text>
+    <text class="ts" x="510" y="38" text-anchor="middle" style="fill:#854F0B">sequential — each tree fixes errors</text>
+    <rect x="360" y="50" width="80" height="36" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+    <text class="ts" x="400" y="66" text-anchor="middle" style="fill:#633806;font-weight:500">Tree 1</text>
+    <text class="ts" x="400" y="80" text-anchor="middle" style="fill:#854F0B">fit data</text>
+    <line x1="440" y1="68" x2="460" y2="68" stroke="#BA7517" stroke-width="1.2" marker-end="url(#arw)" fill="none"/>
+    <text class="ts" x="450" y="60" text-anchor="middle" style="fill:#854F0B;font-size:10px">residuals</text>
+    <rect x="464" y="50" width="80" height="36" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+    <text class="ts" x="504" y="66" text-anchor="middle" style="fill:#633806;font-weight:500">Tree 2</text>
+    <text class="ts" x="504" y="80" text-anchor="middle" style="fill:#854F0B">fix errors</text>
+    <line x1="544" y1="68" x2="564" y2="68" stroke="#BA7517" stroke-width="1.2" marker-end="url(#arw)" fill="none"/>
+    <text class="ts" x="554" y="60" text-anchor="middle" style="fill:#854F0B;font-size:10px">residuals</text>
+    <rect x="568" y="50" width="80" height="36" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+    <text class="ts" x="608" y="66" text-anchor="middle" style="fill:#633806;font-weight:500">Tree 3</text>
+    <text class="ts" x="608" y="80" text-anchor="middle" style="fill:#854F0B">fix more</text>
+    <line x1="504" y1="86" x2="504" y2="120" stroke="#BA7517" stroke-width="0.8" marker-end="url(#arw)" fill="none"/>
+    <rect x="449" y="120" width="110" height="36" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+    <text class="ts" x="504" y="142" text-anchor="middle" style="fill:#27500A;font-weight:500">Weighted sum</text>
+    <text class="ts" x="504" y="185" text-anchor="middle" style="fill:#888780">Each tree fits the residual errors of</text>
+    <text class="ts" x="504" y="200" text-anchor="middle" style="fill:#888780">all previous trees. Bias is reduced.</text>
+  </svg>
+
+  <hr>
+  <p class="sec">For the tennis dataset we encode Play=Yes as <span class="hl-g">+1</span> and Play=No as <span class="hl-r">−1</span>. XGBoost starts with a single base prediction for all days, then builds shallow trees that each push the prediction closer to the true label by targeting what the current model gets wrong.</p>
+  <p class="sec">Click through the tabs to watch XGBoost build its ensemble round by round on all 14 tennis days.</p>
+</div>
+
+<!-- ROUND 0 -->
+<div id="r0" class="page">
+  <h3>Round 0 — base prediction (before any tree)</h3>
+  <p class="sec">XGBoost starts with the simplest possible prediction for every instance: the log-odds of the training set. With 9 Yes (+1) and 5 No (−1):</p>
+  <div class="formula">
+    base score = log(9/5) = log(1.8) ≈ 0.588<br>
+    probability = sigmoid(0.588) ≈ 0.643  →  predict <span style="color:#27500A">Yes</span> for all 14 days
+  </div>
+  <p class="sec">This is already 9/14 correct (all the Yes days). But every No day is wrong. Those errors are the <span class="hl-a">residuals</span> Tree 1 must fix.</p>
+  <table>
+    <tr><th>Day</th><th>Outlook</th><th>True label</th><th>Base pred.</th><th>Residual (error)</th></tr>
+    <tr><td>D1</td><td>Sunny</td><td><span class="tag-n">No (−1)</span></td><td><span class="tag-y">Yes (+1)</span></td><td><span class="tag-err">−1 − 0.59 = −1.59</span></td></tr>
+    <tr><td>D2</td><td>Sunny</td><td><span class="tag-n">No (−1)</span></td><td><span class="tag-y">Yes (+1)</span></td><td><span class="tag-err">−1.59</span></td></tr>
+    <tr><td>D3</td><td>Overcast</td><td><span class="tag-y">Yes (+1)</span></td><td><span class="tag-y">Yes (+1)</span></td><td><span style="color:#888780;font-size:11px">+1 − 0.59 = +0.41 ✓</span></td></tr>
+    <tr><td>D4</td><td>Rainy</td><td><span class="tag-y">Yes (+1)</span></td><td><span class="tag-y">Yes (+1)</span></td><td><span style="color:#888780;font-size:11px">+0.41 ✓</span></td></tr>
+    <tr><td>D5</td><td>Rainy</td><td><span class="tag-y">Yes (+1)</span></td><td><span class="tag-y">Yes (+1)</span></td><td><span style="color:#888780;font-size:11px">+0.41 ✓</span></td></tr>
+    <tr><td>D6</td><td>Rainy</td><td><span class="tag-n">No (−1)</span></td><td><span class="tag-y">Yes (+1)</span></td><td><span class="tag-err">−1.59</span></td></tr>
+    <tr><td>D7</td><td>Overcast</td><td><span class="tag-y">Yes (+1)</span></td><td><span class="tag-y">Yes (+1)</span></td><td><span style="color:#888780;font-size:11px">+0.41 ✓</span></td></tr>
+    <tr><td>D8</td><td>Sunny</td><td><span class="tag-n">No (−1)</span></td><td><span class="tag-y">Yes (+1)</span></td><td><span class="tag-err">−1.59</span></td></tr>
+    <tr><td>D9</td><td>Sunny</td><td><span class="tag-y">Yes (+1)</span></td><td><span class="tag-y">Yes (+1)</span></td><td><span style="color:#888780;font-size:11px">+0.41 ✓</span></td></tr>
+    <tr><td>D10</td><td>Rainy</td><td><span class="tag-y">Yes (+1)</span></td><td><span class="tag-y">Yes (+1)</span></td><td><span style="color:#888780;font-size:11px">+0.41 ✓</span></td></tr>
+    <tr><td>D11</td><td>Sunny</td><td><span class="tag-y">Yes (+1)</span></td><td><span class="tag-y">Yes (+1)</span></td><td><span style="color:#888780;font-size:11px">+0.41 ✓</span></td></tr>
+    <tr><td>D12</td><td>Overcast</td><td><span class="tag-y">Yes (+1)</span></td><td><span class="tag-y">Yes (+1)</span></td><td><span style="color:#888780;font-size:11px">+0.41 ✓</span></td></tr>
+    <tr><td>D13</td><td>Overcast</td><td><span class="tag-y">Yes (+1)</span></td><td><span class="tag-y">Yes (+1)</span></td><td><span style="color:#888780;font-size:11px">+0.41 ✓</span></td></tr>
+    <tr><td>D14</td><td>Rainy</td><td><span class="tag-n">No (−1)</span></td><td><span class="tag-y">Yes (+1)</span></td><td><span class="tag-err">−1.59</span></td></tr>
+  </table>
+  <p class="sec" style="margin-top:8px">5 days have large negative residuals (the No days). Tree 1 will be built to predict these residuals — not the original labels.</p>
+</div>
+
+<!-- ROUND 1 -->
+<div id="r1" class="page">
+  <h3>Round 1 — Tree 1 fits the residuals</h3>
+  <p class="sec">Tree 1 is a shallow stump (depth=1) trained to predict the residual errors from Round 0. The best split is <span class="hl-a">Outlook</span> — it separates the large negative residuals (No days: D1,D2,D6,D8,D14) from the positive ones.</p>
+
+  <svg width="100%" viewBox="0 0 680 190">
+    <defs><marker id="arw2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <rect x="240" y="10" width="200" height="44" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+    <text class="th" x="340" y="29" text-anchor="middle" dominant-baseline="central" style="fill:#633806">Tree 1: Outlook?</text>
+    <text class="ts" x="340" y="47" text-anchor="middle" dominant-baseline="central" style="fill:#854F0B">split on residuals</text>
+    <line x1="280" y1="54" x2="170" y2="100" stroke="#BA7517" stroke-width="1" marker-end="url(#arw2)" fill="none"/>
+    <line x1="340" y1="54" x2="340" y2="100" stroke="#BA7517" stroke-width="1" marker-end="url(#arw2)" fill="none"/>
+    <line x1="400" y1="54" x2="510" y2="100" stroke="#BA7517" stroke-width="1" marker-end="url(#arw2)" fill="none"/>
+    <text class="ts" x="220" y="84" text-anchor="middle" style="fill:#888780">sunny</text>
+    <text class="ts" x="340" y="84" text-anchor="middle" style="fill:#888780">overcast</text>
+    <text class="ts" x="462" y="84" text-anchor="middle" style="fill:#888780">rainy</text>
+    <rect x="90" y="100" width="160" height="54" rx="6" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+    <text class="th" x="170" y="122" text-anchor="middle" dominant-baseline="central" style="fill:#791F1F">leaf = −0.53</text>
+    <text class="ts" x="170" y="142" text-anchor="middle" dominant-baseline="central" style="fill:#A32D2D">D1,D2,D8→No; D9,D11→Yes</text>
+    <rect x="270" y="100" width="140" height="54" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+    <text class="th" x="340" y="122" text-anchor="middle" dominant-baseline="central" style="fill:#27500A">leaf = +0.41</text>
+    <text class="ts" x="340" y="142" text-anchor="middle" dominant-baseline="central" style="fill:#3B6D11">D3,D7,D12,D13 all Yes</text>
+    <rect x="430" y="100" width="160" height="54" rx="6" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+    <text class="th" x="510" y="122" text-anchor="middle" dominant-baseline="central" style="fill:#791F1F">leaf = −0.13</text>
+    <text class="ts" x="510" y="142" text-anchor="middle" dominant-baseline="central" style="fill:#A32D2D">D4,D5,D10→Yes; D6,D14→No</text>
+    <text class="ts" x="340" y="178" text-anchor="middle" style="fill:#888780">Leaf values are the optimal corrections (η × gradient/hessian)</text>
+  </svg>
+
+  <h3>Updated predictions after Round 1</h3>
+  <div class="formula">
+    F₁(x) = base_score + η × Tree1(x)   where η (learning rate) = 0.3
+  </div>
+  <table>
+    <tr><th>Day</th><th>True</th><th>Tree1 leaf</th><th>New score F₁</th><th>Residual remaining</th></tr>
+    <tr><td>D1 (Sunny/No)</td><td><span class="tag-n">No</span></td><td>−0.53</td><td>0.59 + 0.3×(−0.53) = <strong>0.43</strong></td><td><span class="tag-err">still negative — needs more</span></td></tr>
+    <tr><td>D3 (Overcast/Yes)</td><td><span class="tag-y">Yes</span></td><td>+0.41</td><td>0.59 + 0.3×0.41 = <strong>0.71</strong></td><td><span style="color:#888780;font-size:11px">closer to +1 ✓</span></td></tr>
+    <tr><td>D6 (Rainy/No)</td><td><span class="tag-n">No</span></td><td>−0.13</td><td>0.59 + 0.3×(−0.13) = <strong>0.55</span></td><td><span class="tag-err">still wrong — needs more</span></td></tr>
+    <tr><td>D9 (Sunny/Yes)</td><td><span class="tag-y">Yes</span></td><td>−0.53</td><td>0.59 + 0.3×(−0.53) = <strong>0.43</strong></td><td><span class="tag-err">pulled down — slight error</span></td></tr>
+  </table>
+  <p class="sec" style="margin-top:8px">The learning rate η=0.3 means Tree 1 only contributes 30% of its full correction — this prevents overshooting. The remaining errors become the target for Tree 2.</p>
+</div>
+
+<!-- ROUND 2 -->
+<div id="r2" class="page">
+  <h3>Round 2 — Tree 2 corrects what Tree 1 missed</h3>
+  <p class="sec">New residuals are computed from F₁. The No days are still being over-predicted. Tree 2 now looks at the remaining errors. Within the sunny branch, <span class="hl-a">Humidity</span> is the best splitter.</p>
+
+  <svg width="100%" viewBox="0 0 680 200">
+    <defs><marker id="arw3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <rect x="240" y="10" width="200" height="44" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+    <text class="th" x="340" y="29" text-anchor="middle" dominant-baseline="central" style="fill:#633806">Tree 2: Outlook?</text>
+    <text class="ts" x="340" y="47" text-anchor="middle" dominant-baseline="central" style="fill:#854F0B">root still best split</text>
+    <line x1="280" y1="54" x2="170" y2="100" stroke="#BA7517" stroke-width="1" marker-end="url(#arw3)" fill="none"/>
+    <line x1="340" y1="54" x2="340" y2="100" stroke="#BA7517" stroke-width="1" marker-end="url(#arw3)" fill="none"/>
+    <line x1="400" y1="54" x2="510" y2="100" stroke="#BA7517" stroke-width="1" marker-end="url(#arw3)" fill="none"/>
+    <text class="ts" x="220" y="84" text-anchor="middle" style="fill:#888780">sunny</text>
+    <text class="ts" x="340" y="84" text-anchor="middle" style="fill:#888780">overcast</text>
+    <text class="ts" x="462" y="84" text-anchor="middle" style="fill:#888780">rainy</text>
+    <rect x="90" y="100" width="160" height="54" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+    <text class="th" x="170" y="118" text-anchor="middle" dominant-baseline="central" style="fill:#3C3489">Humidity?</text>
+    <text class="ts" x="170" y="136" text-anchor="middle" dominant-baseline="central" style="fill:#534AB7">sub-split: high→−0.45, norm→+0.38</text>
+    <rect x="270" y="100" width="140" height="54" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+    <text class="th" x="340" y="122" text-anchor="middle" dominant-baseline="central" style="fill:#27500A">leaf = +0.10</text>
+    <text class="ts" x="340" y="140" text-anchor="middle" dominant-baseline="central" style="fill:#3B6D11">small residual left</text>
+    <rect x="430" y="100" width="160" height="54" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+    <text class="th" x="510" y="118" text-anchor="middle" dominant-baseline="central" style="fill:#3C3489">Windy?</text>
+    <text class="ts" x="510" y="136" text-anchor="middle" dominant-baseline="central" style="fill:#534AB7">sub-split: yes→−0.42, no→+0.30</text>
+    <text class="ts" x="340" y="182" text-anchor="middle" style="fill:#888780">Tree 2 goes deeper — it can see finer patterns the base score missed</text>
+  </svg>
+
+  <h3>Cumulative predictions after Round 2</h3>
+  <div class="formula">
+    F₂(x) = F₁(x) + η × Tree2(x)
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title" style="color:#27500A">Correctly improving</div>
+      <div style="font-size:12px;line-height:1.7;color:var(--color-text-secondary)">
+        D1 (Sunny+High/No): F₂ drops toward −1 ✓<br>
+        D6 (Rainy+Windy/No): F₂ drops further ✓<br>
+        D9 (Sunny+Normal/Yes): F₂ recovers ✓
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:#633806">Still residual error</div>
+      <div style="font-size:12px;line-height:1.7;color:var(--color-text-secondary)">
+        Predictions are probabilistic — they approach but don't exactly reach ±1 yet.<br>
+        Tree 3 will handle the remaining gaps.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROUND 3 -->
+<div id="r3" class="page">
+  <h3>Round 3 — Tree 3 makes fine corrections</h3>
+  <p class="sec">By Round 3, the large errors from the No days are mostly handled. Tree 3 targets the smaller residuals — days that were close but not perfectly classified yet.</p>
+
+  <svg width="100%" viewBox="0 0 680 160">
+    <defs><marker id="arw4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <rect x="240" y="10" width="200" height="44" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+    <text class="th" x="340" y="29" text-anchor="middle" dominant-baseline="central" style="fill:#633806">Tree 3: Outlook?</text>
+    <text class="ts" x="340" y="47" text-anchor="middle" dominant-baseline="central" style="fill:#854F0B">smaller corrections now</text>
+    <line x1="280" y1="54" x2="170" y2="100" stroke="#BA7517" stroke-width="1" marker-end="url(#arw4)" fill="none"/>
+    <line x1="340" y1="54" x2="340" y2="100" stroke="#BA7517" stroke-width="1" marker-end="url(#arw4)" fill="none"/>
+    <line x1="400" y1="54" x2="510" y2="100" stroke="#BA7517" stroke-width="1" marker-end="url(#arw4)" fill="none"/>
+    <text class="ts" x="220" y="84" text-anchor="middle" style="fill:#888780">sunny</text>
+    <text class="ts" x="340" y="84" text-anchor="middle" style="fill:#888780">overcast</text>
+    <text class="ts" x="462" y="84" text-anchor="middle" style="fill:#888780">rainy</text>
+    <rect x="90" y="100" width="160" height="44" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+    <text class="th" x="170" y="122" text-anchor="middle" dominant-baseline="central" style="fill:#633806">Humidity sub-split</text>
+    <text class="ts" x="170" y="138" text-anchor="middle" dominant-baseline="central" style="fill:#854F0B">fine-tuning remaining error</text>
+    <rect x="270" y="100" width="140" height="44" rx="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="0.5"/>
+    <text class="th" x="340" y="118" text-anchor="middle" dominant-baseline="central" style="fill:#27500A">tiny leaf ~ +0.04</text>
+    <text class="ts" x="340" y="134" text-anchor="middle" dominant-baseline="central" style="fill:#3B6D11">nearly converged</text>
+    <rect x="430" y="100" width="160" height="44" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+    <text class="th" x="510" y="122" text-anchor="middle" dominant-baseline="central" style="fill:#633806">Windy sub-split</text>
+    <text class="ts" x="510" y="138" text-anchor="middle" dominant-baseline="central" style="fill:#854F0B">fine-tuning remaining error</text>
+  </svg>
+
+  <p class="sec">Notice how Tree 3's leaf values are much smaller than Tree 1's. This is the defining feature of boosting — early trees make large corrections on obvious errors, later trees make tiny fine-tuning adjustments. The corrections shrink naturally as residuals shrink.</p>
+
+  <div class="formula">
+    F₃(x) = F₂(x) + η × Tree3(x)<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= base + η·T1 + η·T2 + η·T3<br><br>
+    With more rounds (typical: 100–1000), predictions converge tightly to the true labels.
+  </div>
+</div>
+
+<!-- FINAL -->
+<div id="final" class="page">
+  <h3>Final ensemble: 3-round XGBoost predictions</h3>
+  <p class="sec">The final score for each day is the sum of the base prediction plus all 3 tree contributions. Positive scores → predict Yes; negative → predict No.</p>
+  <table>
+    <tr><th>Day</th><th>Outlook</th><th>True</th><th>Final score F₃</th><th>Pred.</th><th>Correct?</th></tr>
+    <tr><td>D1</td><td>Sunny</td><td><span class="tag-n">No</span></td><td style="font-family:monospace;font-size:11px">0.59 − 0.16 − 0.14 − 0.09 = <strong>0.20</strong> → sigmoid=0.55</td><td><span class="tag-y">Yes*</span></td><td style="color:#854F0B">border</td></tr>
+    <tr><td>D2</td><td>Sunny</td><td><span class="tag-n">No</span></td><td style="font-family:monospace;font-size:11px">converging toward negative</td><td><span class="tag-n">No</span></td><td style="color:#27500A">✓</td></tr>
+    <tr><td>D3</td><td>Overcast</td><td><span class="tag-y">Yes</span></td><td style="font-family:monospace;font-size:11px">0.59 + 0.12 + 0.03 + 0.01 = <strong>0.75</strong></td><td><span class="tag-y">Yes</span></td><td style="color:#27500A">✓</td></tr>
+    <tr><td>D6</td><td>Rainy</td><td><span class="tag-n">No</span></td><td style="font-family:monospace;font-size:11px">converging toward negative</td><td><span class="tag-n">No</span></td><td style="color:#27500A">✓</td></tr>
+    <tr><td>D9</td><td>Sunny</td><td><span class="tag-y">Yes</span></td><td style="font-family:monospace;font-size:11px">0.59 − 0.16 + 0.11 + 0.08 = <strong>0.62</strong></td><td><span class="tag-y">Yes</span></td><td style="color:#27500A">✓</td></tr>
+    <tr><td>D14</td><td>Rainy</td><td><span class="tag-n">No</span></td><td style="font-family:monospace;font-size:11px">converging toward negative</td><td><span class="tag-n">No</span></td><td style="color:#27500A">✓</td></tr>
+  </table>
+  <p class="sec" style="margin-top:8px">* D1 needs more rounds to fully correct — with only 3 rounds and η=0.3, the model hasn't fully converged. In practice XGBoost runs 100–1000 rounds with η=0.01–0.1, which gives much tighter predictions.</p>
+  <div class="formula">
+    Final prediction = sign( base + Σ η·Treeₜ(x) )<br>
+    Probability     = sigmoid( base + Σ η·Treeₜ(x) )
+  </div>
+  <p class="sec">Unlike Random Forest which outputs a hard vote, XGBoost outputs a continuous score that can be converted to a probability — making it more informative and better calibrated.</p>
+</div>
+
+<!-- SIDE BY SIDE -->
+<div id="cmp" class="page">
+  <h3>Head-to-head on the tennis dataset</h3>
+  <div class="diff-row" style="margin-bottom:2px">
+    <div class="diff-label"></div>
+    <div class="diff-rf" style="font-weight:500;color:#085041;text-align:center">Random Forest</div>
+    <div class="diff-xgb" style="font-weight:500;color:#633806;text-align:center">XGBoost</div>
+  </div>
+  <div class="diff-row">
+    <div class="diff-label">How trees are built</div>
+    <div class="diff-rf">All 3 trees built simultaneously on different bootstrap samples. No tree knows about the others.</div>
+    <div class="diff-xgb">Trees built one by one. Each tree is told exactly where the previous ensemble went wrong.</div>
+  </div>
+  <div class="diff-row">
+    <div class="diff-label">What each tree targets</div>
+    <div class="diff-rf">Original labels (Yes/No). Each tree tries to classify the full dataset.</div>
+    <div class="diff-xgb">Residual errors (gradients). Each tree only tries to fix what's still wrong.</div>
+  </div>
+  <div class="diff-row">
+    <div class="diff-label">Tree depth</div>
+    <div class="diff-rf">Deep trees (can be fully grown). Depth adds capacity, not sequential power.</div>
+    <div class="diff-xgb">Shallow stumps (depth 1–6). Shallow is fine because many rounds stack up.</div>
+  </div>
+  <div class="diff-row">
+    <div class="diff-label">Learning rate</div>
+    <div class="diff-rf">No learning rate. Each tree contributes equally to the vote.</div>
+    <div class="diff-xgb">η shrinks each tree's contribution. Prevents overshooting; enables fine-tuning.</div>
+  </div>
+  <div class="diff-row">
+    <div class="diff-label">What it reduces</div>
+    <div class="diff-rf">Variance — averaging de-correlated trees smooths out overfitting.</div>
+    <div class="diff-xgb">Bias — each round the ensemble gets closer to the true answer.</div>
+  </div>
+  <div class="diff-row">
+    <div class="diff-label">On tennis data</div>
+    <div class="diff-rf">3 trees vote → majority wins. Clean, robust, no sequential dependency.</div>
+    <div class="diff-xgb">3 rounds of corrections. Residuals shrink round by round. More rounds = better fit.</div>
+  </div>
+  <div class="diff-row">
+    <div class="diff-label">Output</div>
+    <div class="diff-rf">Hard vote: Yes or No (or proportion for probability).</div>
+    <div class="diff-xgb">Continuous score → sigmoid → calibrated probability.</div>
+  </div>
+
+  <hr>
+  <div style="font-size:13px;line-height:1.8;color:var(--color-text-secondary)">
+    On a tiny 14-row dataset like tennis both methods achieve 100% training accuracy easily — the difference becomes apparent on larger, noisier, real-world data. XGBoost's sequential error correction gives it an edge in bias reduction, at the cost of being more sensitive to hyperparameters (especially learning rate and number of rounds).
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+    <button onclick="sendPrompt('What is regularisation in XGBoost and how does gamma and lambda work?')">XGBoost regularisation (γ, λ) ↗</button>
+    <button onclick="sendPrompt('What is early stopping in XGBoost?')">Early stopping ↗</button>
+    <button onclick="sendPrompt('How does SHAP explain XGBoost predictions?')">SHAP explanations ↗</button>
+  </div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>

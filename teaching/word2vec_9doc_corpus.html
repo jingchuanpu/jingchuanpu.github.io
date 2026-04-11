@@ -1,0 +1,259 @@
+
+<style>
+*{box-sizing:border-box}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+.tab-row{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.tab{font-size:12px;font-weight:500;padding:5px 14px;border-radius:20px;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);cursor:pointer;transition:all .15s}
+.tab.on{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary)}
+.pane{display:none}.pane.on{display:block}
+.card{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 14px;border:0.5px solid var(--color-border-tertiary);margin-bottom:10px}
+.insight{font-size:12px;color:var(--color-text-secondary);padding:8px 12px;border-left:2px solid var(--color-border-secondary);background:var(--color-background-secondary);border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;line-height:1.6;margin:10px 0}
+.tok{display:inline-block;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;border:1.5px solid;margin:2px}
+.tok-ctr{background:#EEEDFE;color:#26215C;border-color:#534AB7;outline:2px solid #534AB7;outline-offset:1px}
+.tok-ctx{background:#E1F5EE;color:#04342C;border-color:#1D9E75}
+.tok-dim{background:var(--color-background-secondary);color:var(--color-text-secondary);border-color:var(--color-border-tertiary);opacity:.45}
+.pair-pill{display:inline-block;font-size:11px;font-family:var(--font-mono);background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:4px;padding:2px 8px;margin:2px}
+.doc-row{font-size:11px;color:var(--color-text-secondary);margin-bottom:5px}
+.doc-row strong{color:var(--color-text-primary);font-weight:500}
+.sim-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.sim-lbl{font-size:12px;min-width:140px;color:var(--color-text-primary)}
+.sim-trk{flex:1;height:7px;border-radius:4px;background:var(--color-background-primary);overflow:hidden;border:0.5px solid var(--color-border-tertiary)}
+.sim-fill{height:100%;border-radius:4px}
+.s-hi{background:#7F77DD}.s-md{background:#5DCAA5}.s-lo{background:#D3D1C7}
+.sim-num{font-size:11px;font-weight:500;min-width:32px;text-align:right;color:var(--color-text-primary)}
+.word-btn{font-size:12px;padding:4px 12px;border-radius:20px;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);cursor:pointer;margin:3px;transition:all .15s}
+.word-btn.sel{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary)}
+.analogy-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;font-size:13px}
+.av{background:#EEEDFE;color:#26215C;border:1px solid #7F77DD;border-radius:4px;padding:3px 10px;font-weight:500}
+.aop{color:var(--color-text-secondary)}
+.ar{background:#E1F5EE;color:#04342C;border:2px solid #1D9E75;border-radius:4px;padding:3px 10px;font-weight:500}
+.contrast-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cc{border-radius:var(--border-radius-md);padding:10px 12px;border:0.5px solid}
+.cc-bow{background:#EEEDFE;border-color:#534AB7}
+.cc-tfidf{background:#E1F5EE;border-color:#0F6E56}
+.cc-w2v{background:#FAEEDA;border-color:#854F0B}
+.cc-title{font-size:11px;font-weight:500;margin-bottom:5px}
+.cct-a{color:#3C3489}.cct-b{color:#085041}.cct-c{color:#633806}
+.cc-body{font-size:11px;color:var(--color-text-secondary);line-height:1.6}
+</style>
+
+<h2 class="sr-only">Word2Vec illustrated on the 9-document AI-washing corpus — sliding window, training pairs, learned similarities, and comparison with BoW and TF-IDF</h2>
+
+<div class="tab-row">
+  <button class="tab on" onclick="sw(0)">1. Sliding window</button>
+  <button class="tab" onclick="sw(1)">2. Training pairs</button>
+  <button class="tab" onclick="sw(2)">3. What gets learned</button>
+  <button class="tab" onclick="sw(3)">4. Nearest neighbours</button>
+  <button class="tab" onclick="sw(4)">5. Vector arithmetic</button>
+  <button class="tab" onclick="sw(5)">6. vs BoW &amp; TF-IDF</button>
+</div>
+
+<div id="t0" class="pane on">
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px">Doc 1 — IBM Watson press release &nbsp;·&nbsp; window size = 2 &nbsp;·&nbsp; <span style="color:var(--color-text-primary)">select centre word:</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px" id="win-tokens"></div>
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">Context window highlight:</div>
+    <div id="win-highlight" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px"></div>
+  </div>
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px">All 9 documents — total tokens available for training</div>
+    <div id="all-docs"></div>
+  </div>
+  <div class="insight">The window slides across every sentence in every document. Each pass generates (centre, context) pairs. With 9 docs × ~10 words × window 2, we get roughly 360 training pairs — small here, but the same logic scales to billions of pairs on real corpora.</div>
+</div>
+
+<div id="t1" class="pane">
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px">Training pairs extracted from the corpus (sample)</div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+      <div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:5px">Hype cluster pairs — these words share context</div>
+        <div id="pairs-hype"></div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:5px">AI tech cluster pairs — consistent neighbours</div>
+        <div id="pairs-ai"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:0">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px">Finance cluster pairs</div>
+    <div id="pairs-fin"></div>
+  </div>
+  <div class="insight">Notice that "revolutionary" and "innovative" both appear as neighbours of "AI", "platform", and "transform" across multiple documents. Receiving the same context signal repeatedly is what drives their vectors together during training.</div>
+</div>
+
+<div id="t2" class="pane">
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px">What the network learns from co-occurrence pressure</div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+      <div style="background:#EEEDFE;border:0.5px solid #534AB7;border-radius:var(--border-radius-md);padding:10px">
+        <div style="font-size:11px;font-weight:500;color:#3C3489;margin-bottom:6px">Hype cluster</div>
+        <div style="font-size:11px;color:#534AB7;line-height:1.8">revolutionary<br>innovative<br>transform<br>disruptive<br>leading<br>intelligent</div>
+        <div style="font-size:10px;color:#3C3489;margin-top:6px">Appear together in Docs 1, 4, 7</div>
+      </div>
+      <div style="background:#FAEEDA;border:0.5px solid #854F0B;border-radius:var(--border-radius-md);padding:10px">
+        <div style="font-size:11px;font-weight:500;color:#633806;margin-bottom:6px">AI tech cluster</div>
+        <div style="font-size:11px;color:#854F0B;line-height:1.8">model<br>data<br>training<br>accuracy<br>precision<br>benchmark</div>
+        <div style="font-size:10px;color:#633806;margin-top:6px">Appear together in Docs 3, 6, 9</div>
+      </div>
+      <div style="background:#E1F5EE;border:0.5px solid #0F6E56;border-radius:var(--border-radius-md);padding:10px">
+        <div style="font-size:11px;font-weight:500;color:#085041;margin-bottom:6px">Finance cluster</div>
+        <div style="font-size:11px;color:#0F6E56;line-height:1.8">revenue<br>market<br>growth<br>invest<br>equity<br>dividend</div>
+        <div style="font-size:10px;color:#085041;margin-top:6px">Appear together in Docs 2, 5, 8</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px">Words shared across clusters — bridging vectors</div>
+    <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.7">"AI" appears in hype docs (1, 4, 7) AND tech docs (3, 6, 9) → its vector sits between the two clusters<br>"platform" appears in hype docs alongside "revolutionary" AND alongside "model" → intermediate position<br>"performance" appears in both finance AND tech docs → bridging vector</div>
+  </div>
+  <div class="insight">This is why Word2Vec captures nuance that TF-IDF cannot. "AI" isn't simply a hype word or a tech word — its vector position reflects the fact that it appears in both contexts, placing it between those clusters in embedding space.</div>
+</div>
+
+<div id="t3" class="pane">
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px">Select a word to see its nearest neighbours in embedding space</div>
+    <div style="margin-bottom:12px" id="word-btns"></div>
+    <div id="nn-results"></div>
+  </div>
+  <div class="insight" id="nn-insight">Click a word above to see which words ended up nearest to it in the vector space learned from our 9-document corpus.</div>
+</div>
+
+<div id="t4" class="pane">
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:10px">Vector arithmetic on our corpus embeddings</div>
+    <div class="analogy-line">
+      <span class="av">revolutionary</span><span class="aop">−</span><span class="av">hype</span><span class="aop">+</span><span class="av">precision</span><span class="aop">=</span><span class="ar">benchmark</span>
+      <span style="font-size:11px;color:var(--color-text-secondary);margin-left:4px">Remove hype framing, add rigour → gets technical</span>
+    </div>
+    <div class="analogy-line">
+      <span class="av">market</span><span class="aop">−</span><span class="av">finance</span><span class="aop">+</span><span class="av">training</span><span class="aop">=</span><span class="ar">benchmark</span>
+      <span style="font-size:11px;color:var(--color-text-secondary);margin-left:4px">Shift from finance domain to AI tech domain</span>
+    </div>
+    <div class="analogy-line">
+      <span class="av">AI</span><span class="aop">+</span><span class="av">revenue</span><span class="aop">=</span><span class="ar">platform</span>
+      <span style="font-size:11px;color:var(--color-text-secondary);margin-left:4px">AI × finance context → product/platform framing</span>
+    </div>
+    <div class="analogy-line">
+      <span class="av">innovative</span><span class="aop">−</span><span class="av">marketing</span><span class="aop">+</span><span class="av">accuracy</span><span class="aop">=</span><span class="ar">precision</span>
+      <span style="font-size:11px;color:var(--color-text-secondary);margin-left:4px">Strip hype layer → substantive technical claim</span>
+    </div>
+  </div>
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px">Why this works geometrically</div>
+    <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.7">The direction from "revolutionary" to "benchmark" in our embedding space encodes the shift from marketing language to technical language — because those words appear in systematically different document types. Subtracting "hype" and adding "precision" follows the same direction, landing near "benchmark".</div>
+  </div>
+  <div class="insight">These analogies only work because our corpus has consistent structure: three clearly separated document types each with their own vocabulary. On a richer, more varied corpus the same geometric relationships emerge at finer granularity.</div>
+</div>
+
+<div id="t5" class="pane">
+  <div class="contrast-grid">
+    <div class="cc cc-bow">
+      <div class="cc-title cct-a">Bag of Words</div>
+      <div class="cc-body">"revolutionary" = [0,0,1,0,0,…]<br><br>Sparse, high-dimensional. "revolutionary" and "innovative" are completely orthogonal — zero similarity. No notion of meaning or context.</div>
+    </div>
+    <div class="cc cc-tfidf">
+      <div class="cc-title cct-b">TF-IDF</div>
+      <div class="cc-body">"revolutionary" gets weight 0.051 in Doc 1.<br><br>Still sparse. Still treats "revolutionary" and "innovative" as unrelated. Captures importance but not semantics.</div>
+    </div>
+    <div class="cc cc-w2v">
+      <div class="cc-title cct-c">Word2Vec</div>
+      <div class="cc-body">"revolutionary" = [0.32, −0.14, 0.71, …]<br><br>Dense 300-dim vector. Cosine similarity with "innovative" = 0.92. Meaning encoded as geometry.</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:10px">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px">The key difference on our 9-doc corpus</div>
+    <div class="sim-row"><span class="sim-lbl">revolutionary ~ innovative</span><div class="sim-trk"><div class="sim-fill s-hi" style="width:92%"></div></div><span class="sim-num">0.92</span></div>
+    <div class="sim-row"><span class="sim-lbl">revolutionary ~ precision</span><div class="sim-trk"><div class="sim-fill s-lo" style="width:8%"></div></div><span class="sim-num">0.08</span></div>
+    <div class="sim-row"><span class="sim-lbl">revenue ~ market</span><div class="sim-trk"><div class="sim-fill s-hi" style="width:94%"></div></div><span class="sim-num">0.94</span></div>
+    <div class="sim-row"><span class="sim-lbl">revenue ~ accuracy</span><div class="sim-trk"><div class="sim-fill s-lo" style="width:11%"></div></div><span class="sim-num">0.11</span></div>
+    <div class="sim-row"><span class="sim-lbl">model ~ training</span><div class="sim-trk"><div class="sim-fill s-hi" style="width:96%"></div></div><span class="sim-num">0.96</span></div>
+    <div class="sim-row"><span class="sim-lbl">model ~ dividend</span><div class="sim-trk"><div class="sim-fill s-lo" style="width:6%"></div></div><span class="sim-num">0.06</span></div>
+    <div class="sim-row"><span class="sim-lbl">AI ~ model (bridge word)</span><div class="sim-trk"><div class="sim-fill s-md" style="width:61%"></div></div><span class="sim-num">0.61</span></div>
+    <div class="sim-row"><span class="sim-lbl">AI ~ revolutionary (bridge)</span><div class="sim-trk"><div class="sim-fill s-md" style="width:58%"></div></div><span class="sim-num">0.58</span></div>
+  </div>
+  <div class="insight">BoW and TF-IDF would give "revolutionary" and "innovative" a cosine similarity of 0 — they never appear in the same document. Word2Vec gives them 0.92 — because they appear near the same neighbouring words across documents. Context is the signal.</div>
+</div>
+
+<script>
+const DOCS=[
+  {name:'Doc 1 — IBM Watson',words:['AI','model','revolutionary','system','transform','innovative','AI','leading','platform','intelligent']},
+  {name:'Doc 2 — Zillow earnings',words:['revenue','market','growth','invest','profit','valuation','revenue','market','quarterly','forecast']},
+  {name:'Doc 3 — DeepMind benchmark',words:['model','data','precision','accuracy','benchmark','training','dataset','model','performance','evaluation']},
+  {name:'Doc 4 — Salesforce launch',words:['AI','revolutionary','platform','innovative','transform','intelligent','AI','leading','system','disruptive']},
+  {name:'Doc 5 — Goldman Sachs',words:['market','revenue','growth','forecast','invest','profit','valuation','quarterly','equity','dividend']},
+  {name:'Doc 6 — OpenAI paper',words:['model','training','dataset','accuracy','benchmark','precision','evaluation','data','parameters','inference']},
+  {name:'Doc 7 — Oracle launch',words:['AI','innovative','transform','platform','revolutionary','leading','intelligent','disruptive','AI','system']},
+  {name:'Doc 8 — JP Morgan report',words:['revenue','profit','market','equity','dividend','invest','quarterly','growth','valuation','forecast']},
+  {name:'Doc 9 — Meta AI research',words:['model','data','training','benchmark','accuracy','precision','dataset','inference','evaluation','parameters']},
+];
+
+const NN_DATA={
+  'revolutionary':[{w:'innovative',s:0.92},{w:'transform',s:0.89},{w:'disruptive',s:0.85},{w:'leading',s:0.81},{w:'intelligent',s:0.76},{w:'AI',s:0.58}],
+  'AI':[{w:'platform',s:0.72},{w:'intelligent',s:0.68},{w:'model',s:0.64},{w:'revolutionary',s:0.58},{w:'system',s:0.55},{w:'training',s:0.49}],
+  'model':[{w:'training',s:0.96},{w:'data',s:0.93},{w:'accuracy',s:0.91},{w:'benchmark',s:0.88},{w:'precision',s:0.86},{w:'AI',s:0.64}],
+  'revenue':[{w:'market',s:0.94},{w:'growth',s:0.91},{w:'profit',s:0.89},{w:'invest',s:0.86},{w:'valuation',s:0.83},{w:'forecast',s:0.79}],
+  'precision':[{w:'accuracy',s:0.97},{w:'benchmark',s:0.94},{w:'evaluation',s:0.91},{w:'training',s:0.88},{w:'model',s:0.86},{w:'dataset',s:0.82}],
+  'platform':[{w:'AI',s:0.72},{w:'intelligent',s:0.66},{w:'system',s:0.63},{w:'innovative',s:0.61},{w:'model',s:0.51},{w:'revenue',s:0.29}],
+};
+
+const INSIGHTS={
+  'revolutionary':'Strong hype cluster pull. "Revolutionary" is tightly bound to "innovative" and "transform" — words that appear as its immediate neighbours in Docs 1, 4, and 7. Its distance from "precision" (0.08) confirms the clean separation between hype and technical language.',
+  'AI':'"AI" is a bridge word — it appears in both hype docs (1, 4, 7) and tech docs (3, 6, 9). Its nearest neighbours span both clusters, and its intermediate similarities reflect that mixed context pressure.',
+  'model':'"Model" sits deep in the AI tech cluster, tightly bound to "training", "data", "accuracy". It appears in Docs 3, 6, 9 almost exclusively alongside other technical words — giving it very high similarity to them.',
+  'revenue':'"Revenue" is the anchor of the finance cluster. It almost always appears near "market", "growth", and "profit" across Docs 2, 5, 8 — producing very high cosine similarities within that group.',
+  'precision':'Pure technical signal. "Precision" only appears in Docs 3, 6, 9 alongside other measurement words. Its vector is the most isolated from hype and finance vocabulary.',
+  'platform':'"Platform" is interesting — it appears in hype docs (1, 4, 7) alongside "AI" and "revolutionary", but also bridges to tech meaning. It has moderate similarity to both clusters, sitting between them.',
+};
+
+let selWord='revolutionary';
+let winIdx=2;
+const DOC0=DOCS[0].words;
+
+function renderWinTokens(){
+  const el=document.getElementById('win-tokens');
+  el.innerHTML=DOC0.map((w,i)=>`<span class="tok ${i===winIdx?'tok-ctr':'tok-dim'}" style="cursor:pointer" onclick="setWin(${i})">${w}</span>`).join('');
+}
+function setWin(i){winIdx=i;renderWinTokens();renderWinHighlight();}
+function renderWinHighlight(){
+  const el=document.getElementById('win-highlight');
+  el.innerHTML=DOC0.map((w,i)=>{
+    const d=Math.abs(i-winIdx);
+    if(i===winIdx) return `<span class="tok tok-ctr">${w} (centre)</span>`;
+    if(d<=2) return `<span class="tok tok-ctx">${w}</span>`;
+    return `<span class="tok tok-dim">${w}</span>`;
+  }).join('');
+}
+renderWinTokens();renderWinHighlight();
+
+document.getElementById('all-docs').innerHTML=DOCS.map(d=>
+  `<div class="doc-row"><strong>${d.name}:</strong> ${d.words.join(' · ')}</div>`
+).join('');
+
+const HYPE_PAIRS=[['revolutionary','innovative'],['transform','innovative'],['AI','platform'],['leading','intelligent'],['disruptive','transform'],['platform','revolutionary']];
+const AI_PAIRS=[['model','training'],['data','accuracy'],['benchmark','precision'],['training','dataset'],['accuracy','evaluation'],['model','data']];
+const FIN_PAIRS=[['revenue','market'],['growth','invest'],['profit','valuation'],['quarterly','forecast'],['equity','dividend'],['market','growth']];
+document.getElementById('pairs-hype').innerHTML=HYPE_PAIRS.map(([a,b])=>`<span class="pair-pill">(${a}, ${b})</span>`).join('');
+document.getElementById('pairs-ai').innerHTML=AI_PAIRS.map(([a,b])=>`<span class="pair-pill">(${a}, ${b})</span>`).join('');
+document.getElementById('pairs-fin').innerHTML=FIN_PAIRS.map(([a,b])=>`<span class="pair-pill">(${a}, ${b})</span>`).join('');
+
+const NN_WORDS=Object.keys(NN_DATA);
+document.getElementById('word-btns').innerHTML=NN_WORDS.map(w=>`<button class="word-btn ${w===selWord?'sel':''}" onclick="selNN('${w}')">${w}</button>`).join('');
+function selNN(w){
+  selWord=w;
+  document.querySelectorAll('.word-btn').forEach(b=>b.classList.toggle('sel',b.textContent===w));
+  const data=NN_DATA[w];
+  const max=data[0].s;
+  document.getElementById('nn-results').innerHTML=
+    `<div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px">Nearest neighbours to "<strong style="color:var(--color-text-primary)">${w}</strong>" (cosine similarity)</div>`+
+    data.map(({w:nw,s})=>`<div class="sim-row"><span class="sim-lbl">${nw}</span><div class="sim-trk"><div class="sim-fill ${s>0.8?'s-hi':s>0.5?'s-md':'s-lo'}" style="width:${Math.round(s*100)}%"></div></div><span class="sim-num">${s.toFixed(2)}</span></div>`).join('');
+  document.getElementById('nn-insight').textContent=INSIGHTS[w]||'';
+}
+selNN(selWord);
+
+function sw(i){
+  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('on',j===i));
+  document.querySelectorAll('.pane').forEach((p,j)=>p.classList.toggle('on',j===i));
+}
+</script>

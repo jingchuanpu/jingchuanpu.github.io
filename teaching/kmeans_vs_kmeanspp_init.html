@@ -1,0 +1,284 @@
+
+<style>
+  .outer { padding: 1rem 0; font-family: var(--font-sans); color: var(--color-text-primary); }
+  .section-title { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); margin: 0 0 6px 4px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .canvases { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  canvas { width: 100%; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary); }
+  .labels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }
+  .label-box { font-size: 13px; color: var(--color-text-secondary); padding: 10px 14px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); line-height: 1.5; }
+  .label-box strong { font-weight: 500; font-size: 14px; color: var(--color-text-primary); display: block; margin-bottom: 4px; }
+  .controls { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  button { font-size: 13px; padding: 6px 14px; cursor: pointer; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: transparent; color: var(--color-text-primary); }
+  button:hover { background: var(--color-background-secondary); }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--color-text-secondary); align-items: center; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+  .step-label { font-size: 13px; color: var(--color-text-secondary); }
+  .iter-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .iter-slider { flex: 1; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 999px; }
+  .badge-random { background: #FAECE7; color: #993C1D; }
+  .badge-pp { background: #E1F5EE; color: #0F6E56; }
+</style>
+<div class="outer">
+  <h2 class="sr-only" style="position:absolute;left:-9999px;">K-means vs K-means++ centroid initialization comparison</h2>
+
+  <div class="controls">
+    <button id="btn-reseed">New random data ↺</button>
+    <div class="legend">
+      <span><span class="dot" style="background:#888780"></span>Data point</span>
+      <span><span class="dot" style="background:#E24B4A; width:13px;height:13px; border:2px solid #A32D2D"></span>Initial centroid</span>
+      <span><span class="dot" style="background:#185FA5; width:13px;height:13px; border:2px solid #0C447C"></span>Final centroid</span>
+    </div>
+  </div>
+
+  <div class="iter-row">
+    <span class="step-label">Iterations:</span>
+    <input class="iter-slider" type="range" id="iter-slider" min="0" max="10" value="0" step="1">
+    <span id="iter-label" style="font-size:13px;font-weight:500;min-width:20px;">0</span>
+  </div>
+
+  <div class="canvases">
+    <div>
+      <div class="section-title"><span class="badge badge-random">Random init</span> K-means</div>
+      <canvas id="c1" height="300"></canvas>
+    </div>
+    <div>
+      <div class="section-title"><span class="badge badge-pp">Smart init</span> K-means++</div>
+      <canvas id="c2" height="300"></canvas>
+    </div>
+  </div>
+
+  <div class="labels">
+    <div class="label-box">
+      <strong>K-means (random)</strong>
+      Picks k centroids uniformly at random. Can cluster together — often converges to a suboptimal solution.
+    </div>
+    <div class="label-box">
+      <strong>K-means++</strong>
+      Picks first centroid randomly, then each subsequent one with probability proportional to its squared distance from the nearest chosen centroid. Spreads them out.
+    </div>
+  </div>
+
+  <div id="wcss-row" style="display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;"></div>
+</div>
+
+<script>
+const K = 4;
+const N = 120;
+const ITER_MAX = 10;
+const PALETTE = ['#E24B4A','#185FA5','#3B6D11','#BA7517'];
+const FINAL_C = ['#A32D2D','#0C447C','#27500A','#854F0B'];
+
+function isDark() { return matchMedia('(prefers-color-scheme: dark)').matches; }
+
+let globalData = [];
+let randState = { centroids: [], history: [] };
+let ppState   = { centroids: [], history: [] };
+
+function seededRng(seed) {
+  let s = seed;
+  return () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 4294967296; };
+}
+
+function generateClusters(rng) {
+  const centers = [[0.2,0.2],[0.75,0.25],[0.2,0.75],[0.75,0.75]];
+  const pts = [];
+  for (let c = 0; c < centers.length; c++) {
+    for (let i = 0; i < N/4; i++) {
+      let x = centers[c][0] + (rng()-0.5)*0.28;
+      let y = centers[c][1] + (rng()-0.5)*0.28;
+      x = Math.max(0.04, Math.min(0.96, x));
+      y = Math.max(0.04, Math.min(0.96, y));
+      pts.push([x, y]);
+    }
+  }
+  return pts;
+}
+
+function dist2(a, b) { return (a[0]-b[0])**2 + (a[1]-b[1])**2; }
+
+function assign(pts, centroids) {
+  return pts.map(p => {
+    let best = 0, bd = Infinity;
+    centroids.forEach((c, i) => { const d = dist2(p, c); if (d < bd) { bd = d; best = i; } });
+    return best;
+  });
+}
+
+function updateCentroids(pts, labels, k) {
+  const sums = Array.from({length:k}, () => [0,0]);
+  const cnts = Array(k).fill(0);
+  pts.forEach((p, i) => { sums[labels[i]][0] += p[0]; sums[labels[i]][1] += p[1]; cnts[labels[i]]++; });
+  return sums.map((s, i) => cnts[i] > 0 ? [s[0]/cnts[i], s[1]/cnts[i]] : [Math.random(), Math.random()]);
+}
+
+function wcss(pts, labels, centroids) {
+  return pts.reduce((sum, p, i) => sum + dist2(p, centroids[labels[i]]), 0);
+}
+
+function runKMeans(pts, initCentroids) {
+  let centroids = initCentroids.map(c => [...c]);
+  const history = [{ centroids: centroids.map(c=>[...c]), labels: assign(pts, centroids) }];
+  for (let it = 0; it < ITER_MAX; it++) {
+    const labels = assign(pts, centroids);
+    centroids = updateCentroids(pts, labels, K);
+    history.push({ centroids: centroids.map(c=>[...c]), labels });
+  }
+  return history;
+}
+
+function initRandom(pts, rng) {
+  const idx = [];
+  while (idx.length < K) {
+    const i = Math.floor(rng() * pts.length);
+    if (!idx.includes(i)) idx.push(i);
+  }
+  return idx.map(i => [...pts[i]]);
+}
+
+function initPlusPlus(pts, rng) {
+  const chosen = [pts[Math.floor(rng() * pts.length)]];
+  while (chosen.length < K) {
+    const dists = pts.map(p => Math.min(...chosen.map(c => dist2(p, c))));
+    const total = dists.reduce((a, b) => a + b, 0);
+    let r = rng() * total, cum = 0;
+    for (let i = 0; i < pts.length; i++) {
+      cum += dists[i];
+      if (cum >= r) { chosen.push([...pts[i]]); break; }
+    }
+    if (chosen.length < K && cum < total) chosen.push([...pts[pts.length-1]]);
+  }
+  return chosen;
+}
+
+function seed() {
+  return Math.floor(Math.random() * 99999);
+}
+
+let currentSeed = seed();
+
+function rebuild() {
+  const rng = seededRng(currentSeed);
+  globalData = generateClusters(rng);
+
+  const r1 = seededRng(currentSeed + 1);
+  const randInit = initRandom(globalData, r1);
+  randState.history = runKMeans(globalData, randInit);
+  randState.initCentroids = randInit;
+
+  const r2 = seededRng(currentSeed + 2);
+  const ppInit = initPlusPlus(globalData, r2);
+  ppState.history = runKMeans(globalData, ppInit);
+  ppState.initCentroids = ppInit;
+
+  document.getElementById('iter-slider').value = 0;
+  drawAll(0);
+}
+
+function drawCanvas(canvasId, pts, state, iter) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth * devicePixelRatio;
+  const H = 300 * devicePixelRatio;
+  canvas.width = W; canvas.height = H;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const w = canvas.offsetWidth, h = 300;
+
+  const px = (x, y) => [x * (w - 32) + 16, y * (h - 32) + 16];
+
+  const dark = isDark();
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = dark ? '#2C2C2A' : '#F1EFE8';
+  ctx.fillRect(0, 0, w, h);
+
+  const step = state.history[Math.min(iter, state.history.length - 1)];
+  const { centroids, labels } = step;
+
+  pts.forEach((p, i) => {
+    const [x, y] = px(p[0], p[1]);
+    const col = PALETTE[labels[i]];
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = col + '88';
+    ctx.fill();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  });
+
+  const isInit = iter === 0;
+  centroids.forEach((c, i) => {
+    const [x, y] = px(c[0], c[1]);
+    const col = isInit ? '#E24B4A' : FINAL_C[i];
+    ctx.beginPath();
+    ctx.arc(x, y, 9, 0, Math.PI * 2);
+    ctx.fillStyle = col;
+    ctx.fill();
+    ctx.strokeStyle = dark ? '#fff' : '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold 10px var(--font-sans)`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(i + 1, x, y);
+  });
+
+  if (iter === 0) {
+    const initC = state.initCentroids;
+    ctx.save();
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = dark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = 1;
+    initC.forEach(c => {
+      const [x, y] = px(c[0], c[1]);
+      ctx.beginPath();
+      ctx.arc(x, y, 18, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+}
+
+function drawAll(iter) {
+  drawCanvas('c1', globalData, randState, iter);
+  drawCanvas('c2', globalData, ppState, iter);
+  document.getElementById('iter-label').textContent = iter;
+  updateWCSS(iter);
+}
+
+function updateWCSS(iter) {
+  const row = document.getElementById('wcss-row');
+  const s1 = randState.history[Math.min(iter, randState.history.length-1)];
+  const s2 = ppState.history[Math.min(iter, ppState.history.length-1)];
+  const w1 = wcss(globalData, s1.labels, s1.centroids);
+  const w2 = wcss(globalData, s2.labels, s2.centroids);
+  row.innerHTML = `
+    <div style="flex:1;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 14px;">
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:2px;">K-means WCSS</div>
+      <div style="font-size:20px;font-weight:500;">${w1.toFixed(3)}</div>
+    </div>
+    <div style="flex:1;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 14px;">
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:2px;">K-means++ WCSS</div>
+      <div style="font-size:20px;font-weight:500;">${w2.toFixed(3)}</div>
+    </div>
+    <div style="flex:1;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 14px;">
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:2px;">WCSS improvement</div>
+      <div style="font-size:20px;font-weight:500;color:${w2 < w1 ? '#0F6E56' : '#993C1D'};">${w1 > 0 ? (((w1-w2)/w1)*100).toFixed(1) : 0}%</div>
+    </div>
+  `;
+}
+
+document.getElementById('iter-slider').addEventListener('input', function() {
+  drawAll(+this.value);
+});
+
+document.getElementById('btn-reseed').addEventListener('click', () => {
+  currentSeed = seed();
+  rebuild();
+});
+
+rebuild();
+window.addEventListener('resize', () => drawAll(+document.getElementById('iter-slider').value));
+</script>

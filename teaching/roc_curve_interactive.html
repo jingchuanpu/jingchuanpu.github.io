@@ -1,0 +1,259 @@
+
+<style>
+* { box-sizing: border-box; }
+.sec { font-size: 13px; color: var(--color-text-secondary); margin: 0 0 6px; }
+.metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+.metric { background: var(--color-background-secondary); border-radius: 8px; padding: 10px; text-align: center; }
+.metric-val { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+.metric-lbl { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+.ctrl-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; font-size: 13px; color: var(--color-text-secondary); }
+.ctrl-row input[type=range] { flex: 1; }
+.ctrl-row span { min-width: 36px; text-align: right; font-weight: 500; color: var(--color-text-primary); }
+.cm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-width: 280px; }
+.cm-cell { border-radius: 6px; padding: 8px; text-align: center; font-size: 12px; }
+.cm-tp { background: #EAF3DE; color: #27500A; }
+.cm-fp { background: #FCEBEB; color: #791F1F; }
+.cm-fn { background: #FAEEDA; color: #633806; }
+.cm-tn { background: #E6F1FB; color: #0C447C; }
+.cm-val { font-size: 18px; font-weight: 500; }
+.cm-lbl { font-size: 11px; margin-top: 2px; }
+.bottom-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; margin-top: 12px; }
+hr { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 12px 0; }
+.legend-row { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--color-text-secondary); margin-bottom: 8px; }
+.legend-row span { display: flex; align-items: center; gap: 5px; }
+.leg-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.interp-box { background: var(--color-background-secondary); border-radius: 8px; padding: 10px 12px; font-size: 12px; line-height: 1.7; color: var(--color-text-secondary); margin-top: 10px; }
+.hl-g { background: #EAF3DE; color: #27500A; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.hl-r { background: #FCEBEB; color: #791F1F; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.hl-b { background: #E6F1FB; color: #0C447C; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+</style>
+
+<div style="padding: 1rem 1rem 0.5rem;">
+
+<div class="legend-row">
+  <span><span class="leg-sq" style="background:#1D9E75"></span>Good model (AUC ≈ 0.87)</span>
+  <span><span class="leg-sq" style="background:#378ADD"></span>Random guess (AUC = 0.50)</span>
+  <span><span class="leg-sq" style="background:#D85A30; border-radius:50%"></span>Current threshold</span>
+</div>
+
+<div style="position:relative;width:100%;height:340px;">
+  <canvas id="rocChart"></canvas>
+</div>
+
+<hr>
+
+<div class="ctrl-row">
+  <label>Threshold</label>
+  <input type="range" id="thresh" min="0" max="100" value="50" step="1" oninput="updateThreshold(this.value)">
+  <span id="thresh-val">0.50</span>
+</div>
+
+<div class="metric-grid">
+  <div class="metric"><div class="metric-val" id="m-tpr" style="color:#27500A">-</div><div class="metric-lbl">TPR / Recall</div></div>
+  <div class="metric"><div class="metric-val" id="m-fpr" style="color:#791F1F">-</div><div class="metric-lbl">FPR</div></div>
+  <div class="metric"><div class="metric-val" id="m-prec">-</div><div class="metric-lbl">Precision</div></div>
+  <div class="metric"><div class="metric-val" id="m-acc">-</div><div class="metric-lbl">Accuracy</div></div>
+</div>
+
+<div class="bottom-grid">
+  <div>
+    <div class="sec" style="margin-bottom:6px">Confusion matrix at this threshold</div>
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px;padding-left:70px">Predicted</div>
+    <div style="display:flex;gap:6px">
+      <div style="display:flex;flex-direction:column;justify-content:center;gap:6px;font-size:11px;color:var(--color-text-secondary);writing-mode:horizontal-tb;min-width:60px">
+        <span style="height:52px;display:flex;align-items:center">Pos</span>
+        <span style="height:52px;display:flex;align-items:center">Neg</span>
+      </div>
+      <div>
+        <div style="display:flex;gap:4px;margin-bottom:2px;font-size:11px;color:var(--color-text-secondary)">
+          <span style="width:90px;text-align:center">Predicted +</span>
+          <span style="width:90px;text-align:center">Predicted −</span>
+        </div>
+        <div class="cm-grid" style="max-width:188px">
+          <div class="cm-cell cm-tp"><div class="cm-val" id="cm-tp">-</div><div class="cm-lbl">TP</div></div>
+          <div class="cm-cell cm-fn"><div class="cm-val" id="cm-fn">-</div><div class="cm-lbl">FN</div></div>
+          <div class="cm-cell cm-fp"><div class="cm-val" id="cm-fp">-</div><div class="cm-lbl">FP</div></div>
+          <div class="cm-cell cm-tn"><div class="cm-val" id="cm-tn">-</div><div class="cm-lbl">TN</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="sec">Threshold effect</div>
+    <div class="interp-box" id="interp-box"></div>
+  </div>
+</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const N_POS = 50, N_NEG = 50;
+function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+
+const rng = (seed) => {
+  let s = seed;
+  return () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
+};
+const rand = rng(42);
+const scores = [];
+for (let i = 0; i < N_POS; i++) scores.push({ label: 1, score: Math.min(0.99, Math.max(0.01, sigmoid((rand() * 4) - 0.5))) });
+for (let i = 0; i < N_NEG; i++) scores.push({ label: 0, score: Math.min(0.99, Math.max(0.01, sigmoid((rand() * 4) - 2.5))) });
+
+function computeROC() {
+  const thresholds = [];
+  for (let t = 0; t <= 100; t++) thresholds.push(t / 100);
+  const pts = thresholds.map(t => {
+    let tp=0,fp=0,fn=0,tn=0;
+    scores.forEach(s => {
+      if (s.label===1 && s.score>=t) tp++;
+      else if (s.label===1 && s.score<t) fn++;
+      else if (s.label===0 && s.score>=t) fp++;
+      else tn++;
+    });
+    return { t, tpr: tp/(tp+fn)||0, fpr: fp/(fp+tn)||0, tp, fp, fn, tn };
+  });
+  return pts;
+}
+
+const rocPts = computeROC();
+
+function computeAUC(pts) {
+  let auc = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i-1].fpr - pts[i].fpr;
+    const avgY = (pts[i-1].tpr + pts[i].tpr) / 2;
+    if (dx > 0) auc += dx * avgY;
+  }
+  return auc;
+}
+const auc = computeAUC(rocPts);
+
+const rocData = rocPts.map(p => ({ x: p.fpr, y: p.tpr }));
+const diagData = [{ x: 0, y: 0 }, { x: 1, y: 1 }];
+
+let currentPoint = { x: 0, y: 0 };
+let dotPlugin = {
+  id: 'dotPlugin',
+  afterDraw(chart) {
+    const { ctx, scales } = chart;
+    const xPx = scales.x.getPixelForValue(currentPoint.x);
+    const yPx = scales.y.getPixelForValue(currentPoint.y);
+    ctx.beginPath();
+    ctx.arc(xPx, yPx, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#D85A30';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+};
+
+const aucPlugin = {
+  id: 'aucPlugin',
+  beforeDraw(chart) {
+    const { ctx, scales, chartArea } = chart;
+    const pts = rocData;
+    if (!pts.length) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(scales.x.getPixelForValue(0), scales.y.getPixelForValue(0));
+    pts.forEach(p => ctx.lineTo(scales.x.getPixelForValue(p.x), scales.y.getPixelForValue(p.y)));
+    ctx.lineTo(scales.x.getPixelForValue(1), scales.y.getPixelForValue(0));
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(29,158,117,0.10)';
+    ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.font = '500 13px sans-serif';
+    ctx.fillStyle = '#1D9E75';
+    ctx.fillText('AUC = ' + auc.toFixed(3), scales.x.getPixelForValue(0.55), scales.y.getPixelForValue(0.25));
+    ctx.restore();
+  }
+};
+
+const chart = new Chart(document.getElementById('rocChart'), {
+  type: 'scatter',
+  data: {
+    datasets: [
+      {
+        label: 'ROC curve',
+        data: rocData,
+        showLine: true,
+        borderColor: '#1D9E75',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        tension: 0.3,
+        fill: false,
+      },
+      {
+        label: 'Random (AUC=0.5)',
+        data: diagData,
+        showLine: true,
+        borderColor: '#378ADD',
+        borderWidth: 1.5,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        fill: false,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { enabled: false }
+    },
+    scales: {
+      x: {
+        min: 0, max: 1,
+        title: { display: true, text: 'False Positive Rate (FPR)', font: { size: 12 }, color: '#888780' },
+        ticks: { font: { size: 11 }, color: '#888780', callback: v => v.toFixed(1) },
+        grid: { color: 'rgba(136,135,128,0.15)' }
+      },
+      y: {
+        min: 0, max: 1,
+        title: { display: true, text: 'True Positive Rate (TPR)', font: { size: 12 }, color: '#888780' },
+        ticks: { font: { size: 11 }, color: '#888780', callback: v => v.toFixed(1) },
+        grid: { color: 'rgba(136,135,128,0.15)' }
+      }
+    }
+  },
+  plugins: [aucPlugin, dotPlugin]
+});
+
+function updateThreshold(val) {
+  const t = val / 100;
+  document.getElementById('thresh-val').textContent = t.toFixed(2);
+  const idx = Math.round(t * 100);
+  const pt = rocPts[idx] || rocPts[rocPts.length - 1];
+  currentPoint = { x: pt.fpr, y: pt.tpr };
+  chart.update('none');
+
+  const tpr = pt.tpr, fpr = pt.fpr, tp = pt.tp, fp = pt.fp, fn = pt.fn, tn = pt.tn;
+  const prec = tp + fp > 0 ? tp / (tp + fp) : 0;
+  const acc = (tp + tn) / (tp + fp + fn + tn);
+
+  document.getElementById('m-tpr').textContent = (tpr * 100).toFixed(1) + '%';
+  document.getElementById('m-fpr').textContent = (fpr * 100).toFixed(1) + '%';
+  document.getElementById('m-prec').textContent = (prec * 100).toFixed(1) + '%';
+  document.getElementById('m-acc').textContent = (acc * 100).toFixed(1) + '%';
+  document.getElementById('cm-tp').textContent = tp;
+  document.getElementById('cm-fp').textContent = fp;
+  document.getElementById('cm-fn').textContent = fn;
+  document.getElementById('cm-tn').textContent = tn;
+
+  let interp = '';
+  if (t < 0.25) {
+    interp = `<span class="hl-g">Low threshold</span>: almost everything is flagged positive. Very high recall — few positives are missed — but many false alarms (high FPR). Good when missing a positive is very costly (e.g. disease screening).`;
+  } else if (t > 0.75) {
+    interp = `<span class="hl-b">High threshold</span>: only the most confident predictions are flagged. Very few false alarms — but many true positives are missed (low recall). Good when false alarms are very costly (e.g. spam detection).`;
+  } else {
+    interp = `<span class="hl-g">Balanced threshold</span>: a trade-off between catching positives and avoiding false alarms. The best threshold depends on the relative cost of FP vs FN in your application.`;
+  }
+  document.getElementById('interp-box').innerHTML = interp;
+}
+
+updateThreshold(50);
+</script>

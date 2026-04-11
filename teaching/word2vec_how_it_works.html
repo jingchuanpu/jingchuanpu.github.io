@@ -1,0 +1,231 @@
+
+<style>
+*{box-sizing:border-box}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+.step-nav{display:flex;align-items:center;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+.sdot{width:26px;height:26px;border-radius:50%;border:0.5px solid var(--color-border-secondary);background:transparent;font-size:11px;font-weight:500;color:var(--color-text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.sdot.active{background:var(--color-text-primary);color:var(--color-background-primary);border-color:var(--color-text-primary)}
+.sdot.done{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary)}
+.sline{flex:1;height:0.5px;background:var(--color-border-tertiary);min-width:8px}
+.panel{display:none}.panel.active{display:block}
+.slabel{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.ssub{font-size:12px;color:var(--color-text-secondary);margin-bottom:14px;line-height:1.6}
+.nav-btns{display:flex;gap:8px;margin-top:16px}
+.card{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 14px;border:0.5px solid var(--color-border-tertiary);margin-bottom:10px}
+.insight{font-size:12px;color:var(--color-text-secondary);padding:8px 12px;border-left:2px solid var(--color-border-secondary);background:var(--color-background-secondary);border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;line-height:1.6;margin-top:8px}
+.two-col{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.three-col{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.tok{display:inline-block;font-size:13px;font-weight:500;padding:5px 11px;border-radius:5px;border:1.5px solid;margin:2px}
+.tok-ctx{background:#E1F5EE;color:#04342C;border-color:#1D9E75}
+.tok-center{background:#EEEDFE;color:#26215C;border-color:#534AB7;outline:2.5px solid #534AB7;outline-offset:2px}
+.tok-dim{background:var(--color-background-secondary);color:var(--color-text-secondary);border-color:var(--color-border-tertiary)}
+.vec-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.vec-label{font-size:12px;font-weight:500;min-width:90px;color:var(--color-text-primary)}
+.vec-cells{display:flex;gap:3px}
+.vc{width:28px;height:28px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;border:0.5px solid var(--color-border-tertiary)}
+.vc-hi{background:#CECBF6;color:#26215C;border-color:#7F77DD}
+.vc-lo{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.vc-med{background:#E1F5EE;color:#04342C;border-color:#1D9E75}
+.sim-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.sim-label{font-size:12px;min-width:160px;color:var(--color-text-primary)}
+.sim-track{flex:1;height:8px;border-radius:4px;background:var(--color-background-primary);overflow:hidden;border:0.5px solid var(--color-border-tertiary)}
+.sim-fill{height:100%;border-radius:4px;transition:width .5s}
+.sim-hi{background:#7F77DD}
+.sim-med{background:#5DCAA5}
+.sim-lo{background:#D3D1C7}
+.sim-score{font-size:11px;font-weight:500;min-width:32px;text-align:right;color:var(--color-text-primary)}
+.analogy-box{background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-lg);padding:12px 16px;margin:10px 0}
+.analogy-eq{font-size:14px;font-weight:500;color:var(--color-text-primary);display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.aeq-word{background:#EEEDFE;color:#26215C;border:1px solid #7F77DD;border-radius:4px;padding:3px 10px;font-size:13px}
+.aeq-op{color:var(--color-text-secondary);font-size:14px}
+.aeq-result{background:#E1F5EE;color:#04342C;border:2px solid #1D9E75;border-radius:4px;padding:3px 10px;font-size:13px}
+.loss-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.loss-label{font-size:11px;min-width:100px;color:var(--color-text-secondary)}
+.loss-track{flex:1;height:7px;border-radius:4px;background:var(--color-background-secondary);overflow:hidden}
+.loss-fill{height:100%;border-radius:4px;background:#D85A30;transition:width .6s}
+</style>
+
+<h2 class="sr-only">Word2Vec explainer — five steps from sliding window to embedding space and semantic arithmetic</h2>
+
+<div class="step-nav">
+  <button class="sdot active" onclick="go(0)">1</button><div class="sline"></div>
+  <button class="sdot" onclick="go(1)">2</button><div class="sline"></div>
+  <button class="sdot" onclick="go(2)">3</button><div class="sline"></div>
+  <button class="sdot" onclick="go(3)">4</button><div class="sline"></div>
+  <button class="sdot" onclick="go(4)">5</button>
+</div>
+
+<div id="p0" class="panel active">
+  <div class="slabel">The core idea — context defines meaning</div>
+  <div class="ssub">Word2Vec is built on one hypothesis: words that appear in similar contexts have similar meanings. "Revolutionary" and "innovative" appear near the same neighbours — so they should end up near each other in vector space. The model never reads a dictionary. It learns purely from co-occurrence patterns.</div>
+  <div class="two-col">
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px">The distributional hypothesis</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.7">"You shall know a word by the company it keeps." — J.R. Firth, 1957<br><br>Words appearing in similar sentence positions share semantic properties.</div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:6px">What Word2Vec actually does</div>
+      <div style="font-size:12px;color:var(--color-text-secondary);line-height:1.7">Trains a shallow neural network to <strong style="color:var(--color-text-primary)">predict context words from a centre word</strong>. The learned weights become the embeddings — meaning is a side effect of the prediction task.</div>
+    </div>
+  </div>
+  <div class="insight">Word2Vec produces a dense vector (e.g. 300 numbers) for every word. Unlike one-hot or TF-IDF vectors, these are small, continuous, and capture semantic similarity — "king" and "queen" will be close; "king" and "broccoli" will be far apart.</div>
+  <div class="nav-btns"><button onclick="go(1)">Next →</button></div>
+</div>
+
+<div id="p1" class="panel">
+  <div class="slabel">Step 1 — the sliding window</div>
+  <div class="ssub">A window of fixed size (typically 2–5 words) slides across every sentence. The centre word is the input; the surrounding context words are the prediction targets. Each position of the window generates one training example.</div>
+  <div class="card">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px">Sentence: "Our AI platform delivers revolutionary results" — window size = 2</div>
+    <div id="window-display" style="margin-bottom:12px"></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button onclick="prevWin()" id="btn-prev" style="padding:4px 12px;font-size:12px">← Prev</button>
+      <span style="font-size:11px;color:var(--color-text-secondary)" id="win-pos">Position 1 of 4</span>
+      <button onclick="nextWin()" id="btn-next" style="padding:4px 12px;font-size:12px">Next →</button>
+    </div>
+  </div>
+  <div id="window-pairs" class="card" style="margin-top:0"></div>
+  <div class="insight">With a window of 2, each centre word generates up to 4 training pairs (2 left + 2 right). A corpus of 1 billion words generates hundreds of millions of training examples — this scale is what makes the embeddings rich.</div>
+  <div class="nav-btns"><button onclick="go(0)">← Back</button><button onclick="go(2)">Next →</button></div>
+</div>
+
+<div id="p2" class="panel">
+  <div class="slabel">Step 2 — the neural network (Skip-gram)</div>
+  <div class="ssub">The Skip-gram architecture takes the centre word as input and tries to predict each context word. It has just one hidden layer — the weight matrix of this layer becomes the word embeddings.</div>
+  <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:14px;border:0.5px solid var(--color-border-tertiary);margin-bottom:10px">
+    <svg width="100%" viewBox="0 0 620 200" style="display:block">
+      <defs><marker id="arr2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+      <rect x="20" y="75" width="110" height="50" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+      <text x="75" y="96" text-anchor="middle" font-size="12" font-weight="500" fill="#26215C">Input</text>
+      <text x="75" y="113" text-anchor="middle" font-size="11" fill="#3C3489">"revolutionary"</text>
+      <text x="75" y="128" text-anchor="middle" font-size="10" fill="#534AB7">one-hot vector</text>
+      <rect x="200" y="55" width="130" height="90" rx="6" fill="#FAC775" stroke="#854F0B" stroke-width="0.5"/>
+      <text x="265" y="78" text-anchor="middle" font-size="12" font-weight="500" fill="#412402">Hidden layer</text>
+      <text x="265" y="96" text-anchor="middle" font-size="11" fill="#633806">Weight matrix W</text>
+      <text x="265" y="112" text-anchor="middle" font-size="10" fill="#854F0B">|vocab| × dimensions</text>
+      <text x="265" y="128" text-anchor="middle" font-size="10" fill="#854F0B">e.g. 50000 × 300</text>
+      <rect x="400" y="55" width="120" height="90" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+      <text x="460" y="78" text-anchor="middle" font-size="12" font-weight="500" fill="#04342C">Output layer</text>
+      <text x="460" y="96" text-anchor="middle" font-size="11" fill="#085041">Softmax over</text>
+      <text x="460" y="112" text-anchor="middle" font-size="11" fill="#085041">full vocabulary</text>
+      <text x="460" y="128" text-anchor="middle" font-size="10" fill="#0F6E56">predict "innovative"</text>
+      <line x1="130" y1="100" x2="198" y2="100" stroke="#888780" stroke-width="1" marker-end="url(#arr2)" fill="none"/>
+      <line x1="330" y1="100" x2="398" y2="100" stroke="#888780" stroke-width="1" marker-end="url(#arr2)" fill="none"/>
+      <text x="164" y="90" text-anchor="middle" font-size="10" fill="#888780">lookup</text>
+      <text x="364" y="90" text-anchor="middle" font-size="10" fill="#888780">predict</text>
+      <rect x="200" y="160" width="130" height="28" rx="4" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+      <text x="265" y="178" text-anchor="middle" font-size="11" font-weight="500" fill="#26215C">Row of W = embedding</text>
+    </svg>
+  </div>
+  <div class="insight">The network is trained to predict context words from centre words. After training, we discard the output layer entirely. The rows of the hidden weight matrix W are the word embeddings — one 300-dimensional vector per word.</div>
+  <div class="nav-btns"><button onclick="go(1)">← Back</button><button onclick="go(3)">Next →</button></div>
+</div>
+
+<div id="p3" class="panel">
+  <div class="slabel">Step 3 — learning by backpropagation</div>
+  <div class="ssub">For each training pair, the network makes a prediction, measures its error (how wrong was the predicted context word?), and nudges the embedding vectors slightly in the direction that reduces the error. After millions of examples, vectors for semantically similar words converge toward each other.</div>
+  <div class="card" style="margin-bottom:8px">
+    <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px">Training pair: centre="revolutionary", target="innovative"</div>
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:10px">Watch the loss shrink as the embedding for "revolutionary" gets nudged closer to "innovative"</div>
+    <div id="training-steps"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button onclick="trainStep()" id="train-btn" style="font-size:12px">Run update step</button>
+      <button onclick="resetTrain()" style="font-size:12px">Reset</button>
+    </div>
+  </div>
+  <div class="insight">The key insight: two words that repeatedly appear in the same context receive the same gradient signal — both get nudged in the same direction repeatedly. Over millions of examples this pressure accumulates, pulling semantically related words together in the vector space.</div>
+  <div class="nav-btns"><button onclick="go(2)">← Back</button><button onclick="go(4)">Next →</button></div>
+</div>
+
+<div id="p4" class="panel">
+  <div class="slabel">Step 4 — what the embeddings capture</div>
+  <div class="ssub">After training on a large corpus, the embedding space develops rich geometric structure. Semantic similarity becomes spatial proximity. And remarkably, directions in the space encode relationships — the famous "king − man + woman = queen" arithmetic.</div>
+  <div class="card" style="margin-bottom:8px">
+    <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px">Cosine similarity — words most similar to "revolutionary"</div>
+    <div class="sim-row"><span class="sim-label">innovative</span><div class="sim-track"><div class="sim-fill sim-hi" style="width:92%"></div></div><span class="sim-score">0.92</span></div>
+    <div class="sim-row"><span class="sim-label">transformative</span><div class="sim-track"><div class="sim-fill sim-hi" style="width:87%"></div></div><span class="sim-score">0.87</span></div>
+    <div class="sim-row"><span class="sim-label">disruptive</span><div class="sim-track"><div class="sim-fill sim-hi" style="width:83%"></div></div><span class="sim-score">0.83</span></div>
+    <div class="sim-row"><span class="sim-label">AI</span><div class="sim-track"><div class="sim-fill sim-med" style="width:61%"></div></div><span class="sim-score">0.61</span></div>
+    <div class="sim-row"><span class="sim-label">revenue</span><div class="sim-track"><div class="sim-fill sim-lo" style="width:18%"></div></div><span class="sim-score">0.18</span></div>
+    <div class="sim-row"><span class="sim-label">precision</span><div class="sim-track"><div class="sim-fill sim-lo" style="width:09%"></div></div><span class="sim-score">0.09</span></div>
+  </div>
+  <div class="analogy-box">
+    <div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px">Vector arithmetic — semantic relationships encoded as directions</div>
+    <div class="analogy-eq">
+      <span class="aeq-word">king</span><span class="aeq-op">−</span><span class="aeq-word">man</span><span class="aeq-op">+</span><span class="aeq-word">woman</span><span class="aeq-op">=</span><span class="aeq-result">queen</span>
+    </div>
+    <div class="analogy-eq">
+      <span class="aeq-word">AI</span><span class="aeq-op">−</span><span class="aeq-word">hype</span><span class="aeq-op">+</span><span class="aeq-word">precision</span><span class="aeq-op">=</span><span class="aeq-result">benchmark</span>
+    </div>
+    <div style="font-size:11px;color:var(--color-text-secondary);line-height:1.6">The direction from "man" to "woman" captures gender. Subtracting it from "king" and adding it back points toward "queen". The model learned this purely from co-occurrence statistics — never from any explicit definition of gender.</div>
+  </div>
+  <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+    <button onclick="sendPrompt('What is the difference between Word2Vec Skip-gram and CBOW?')">Skip-gram vs CBOW ↗</button>
+    <button onclick="sendPrompt('How does Word2Vec compare to GloVe and fastText?')">Word2Vec vs GloVe ↗</button>
+    <button onclick="sendPrompt('What are the limitations of Word2Vec embeddings?')">Limitations ↗</button>
+  </div>
+  <div class="nav-btns"><button onclick="go(3)">← Back</button></div>
+</div>
+
+<script>
+const N=5;
+function go(i){
+  for(let j=0;j<N;j++){
+    document.getElementById('p'+j).classList.toggle('active',j===i);
+    const d=document.querySelectorAll('.sdot')[j];
+    d.classList.remove('active','done');
+    if(j===i) d.classList.add('active');
+    else if(j<i) d.classList.add('done');
+  }
+}
+
+const SENT=['Our','AI','platform','delivers','revolutionary','results'];
+let winPos=2;
+function renderWindow(){
+  const el=document.getElementById('window-display');
+  const center=winPos;
+  el.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">'+
+    SENT.map((w,i)=>{
+      const dist=Math.abs(i-center);
+      if(i===center) return `<span class="tok tok-center">${w}</span>`;
+      if(dist<=2) return `<span class="tok tok-ctx">${w}</span>`;
+      return `<span class="tok tok-dim">${w}</span>`;
+    }).join('')+'</div>';
+  const cw=SENT[center];
+  const pairs=[];
+  for(let d=-2;d<=2;d++){
+    if(d===0) continue;
+    const ci=center+d;
+    if(ci>=0&&ci<SENT.length) pairs.push(`<span style="font-family:var(--font-mono);font-size:12px;background:var(--color-background-primary);padding:2px 8px;border-radius:4px;border:0.5px solid var(--color-border-secondary)">(${cw}, ${SENT[ci]})</span>`);
+  }
+  document.getElementById('window-pairs').innerHTML=
+    '<div style="font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px">Training pairs generated from this position:</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+pairs.join('')+'</div>';
+  const maxPos=SENT.length-1;
+  document.getElementById('btn-prev').disabled=winPos<=1;
+  document.getElementById('btn-next').disabled=winPos>=maxPos-1;
+  document.getElementById('win-pos').textContent=`Position ${winPos-1} of ${maxPos-2}`;
+}
+function nextWin(){if(winPos<SENT.length-2){winPos++;renderWindow();}}
+function prevWin(){if(winPos>1){winPos--;renderWindow();}}
+renderWindow();
+
+let trainIter=0;
+const losses=[0.91,0.78,0.63,0.49,0.38,0.29,0.22,0.17,0.13,0.10];
+const cosines=[0.12,0.24,0.38,0.51,0.63,0.72,0.79,0.85,0.89,0.92];
+function renderTrain(){
+  const el=document.getElementById('training-steps');
+  const rows=Math.min(trainIter+1,losses.length);
+  let html='';
+  for(let i=0;i<rows;i++){
+    const l=losses[i];
+    const c=cosines[i];
+    html+=`<div class="loss-row"><span class="loss-label">Step ${i+1} — loss</span><div class="loss-track"><div class="loss-fill" style="width:${Math.round(l*100)}%"></div></div><span style="font-size:11px;font-weight:500;min-width:36px;text-align:right;color:var(--color-text-primary)">${l.toFixed(2)}</span><span style="font-size:10px;color:var(--color-text-secondary);margin-left:8px">sim: ${c.toFixed(2)}</span></div>`;
+  }
+  if(trainIter===0) html='<div style="font-size:12px;color:var(--color-text-secondary)">Press "Run update step" to begin training.</div>';
+  el.innerHTML=html;
+  document.getElementById('train-btn').disabled=trainIter>=losses.length;
+}
+function trainStep(){trainIter++;renderTrain();}
+function resetTrain(){trainIter=0;renderTrain();}
+renderTrain();
+</script>

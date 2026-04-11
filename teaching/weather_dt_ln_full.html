@@ -1,0 +1,186 @@
+
+<style>
+  .tab-bar{display:flex;gap:6px;padding:1rem 1rem 0;flex-wrap:wrap}
+  .tab{padding:6px 14px;border-radius:6px 6px 0 0;font-size:13px;cursor:pointer;border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-secondary);transition:background .15s}
+  .tab.active{background:var(--color-background-primary);color:var(--color-text-primary);border-bottom:0.5px solid var(--color-background-primary);font-weight:500}
+  .panel{display:none;padding:1rem;border:0.5px solid var(--color-border-secondary);border-radius:0 var(--border-radius-lg) var(--border-radius-lg) var(--border-radius-lg);margin:0 1rem 1rem;background:var(--color-background-primary)}
+  .panel.active{display:block}
+  h3{font-size:15px;font-weight:500;margin:0 0 8px;color:var(--color-text-primary)}
+  h4{font-size:13px;font-weight:500;margin:12px 0 4px;color:var(--color-text-primary)}
+  .sec{font-size:13px;color:var(--color-text-secondary);margin:0 0 6px}
+  .formula{background:var(--color-background-secondary);border-radius:6px;padding:9px 13px;font-size:12.5px;font-family:var(--font-mono,monospace);margin:6px 0;line-height:1.85}
+  .hl {background:#FAEEDA;color:#633806;padding:1px 6px;border-radius:4px;font-weight:500}
+  .hl-g{background:#EAF3DE;color:#27500A;padding:1px 6px;border-radius:4px;font-weight:500}
+  .hl-b{background:#E6F1FB;color:#0C447C;padding:1px 6px;border-radius:4px;font-weight:500}
+  .hl-r{background:#FCEBEB;color:#791F1F;padding:1px 6px;border-radius:4px;font-weight:500}
+  hr{border:none;border-top:0.5px solid var(--color-border-tertiary);margin:12px 0}
+  .gain-row{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:13px}
+  .gain-bar-wrap{flex:1;height:10px;background:var(--color-background-secondary);border-radius:5px;overflow:hidden}
+  .gain-bar{height:100%;border-radius:5px}
+  .badge{font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500;margin-left:4px}
+  .badge-win{background:#EAF3DE;color:#27500A}
+  .badge-no{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+  .note{font-size:12px;color:var(--color-text-secondary);background:var(--color-background-secondary);border-radius:6px;padding:8px 12px;margin-top:10px;line-height:1.6}
+</style>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="show('root')">Root H</div>
+  <div class="tab" onclick="show('outlook')">Outlook</div>
+  <div class="tab" onclick="show('windy')">Windy</div>
+  <div class="tab" onclick="show('temp')">Temperature</div>
+  <div class="tab" onclick="show('winner')">Result</div>
+</div>
+
+<div id="root" class="panel active">
+  <h3>Root entropy (using ln)</h3>
+  <p class="sec">14 instances: 9 Yes, 5 No</p>
+  <div class="formula">
+    H(root) = −[ (9/14)·ln(9/14) + (5/14)·ln(5/14) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ 0.6429·ln(0.6429) + 0.3571·ln(0.3571) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ 0.6429·(−0.4418) + 0.3571·(−1.0296) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ −0.2840 + (−0.3677) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ −0.6517 ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="hl">0.6517 nats</span>
+  </div>
+  <p class="sec" style="margin-top:10px">This is our baseline. We want to find which feature reduces this the most.</p>
+  <div class="note">Using ln gives entropy in <strong>nats</strong> instead of bits (log₂). The conversion factor is ln(2) ≈ 0.6931, so 0.940 bits × 0.6931 = 0.6517 nats — same information, different units.</div>
+</div>
+
+<div id="outlook" class="panel">
+  <h3>Split on Outlook</h3>
+  <p class="sec">Three branches: sunny (5), overcast (4), rainy (5)</p>
+
+  <h4>Sunny — 2 Yes, 3 No out of 5</h4>
+  <div class="formula">
+    H(sunny) = −[ (2/5)·ln(2/5) + (3/5)·ln(3/5) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ 0.4·(−0.9163) + 0.6·(−0.5108) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ −0.3665 + (−0.3065) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="hl-b">0.6730 nats</span>
+  </div>
+
+  <h4>Overcast — 4 Yes, 0 No out of 4</h4>
+  <div class="formula">
+    H(overcast) = −[ (4/4)·ln(4/4) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ 1·ln(1) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ 1·0 ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="hl-g">0.0000 nats</span>  ← pure leaf!
+  </div>
+
+  <h4>Rainy — 3 Yes, 2 No out of 5</h4>
+  <div class="formula">
+    H(rainy) = −[ (3/5)·ln(3/5) + (2/5)·ln(2/5) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ 0.6·(−0.5108) + 0.4·(−0.9163) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ −0.3065 + (−0.3665) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="hl-b">0.6730 nats</span>  (same proportions as sunny, mirrored)
+  </div>
+
+  <hr>
+  <h4>Weighted entropy after split</h4>
+  <div class="formula">
+    H<sub>after</sub> = (5/14)·0.6730 + (4/14)·0.0000 + (5/14)·0.6730<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= 0.2404 + 0 + 0.2404<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="hl">0.4808 nats</span>
+  </div>
+  <div class="formula">
+    IG(Outlook) = 0.6517 − 0.4808 = <span class="hl-g">0.1709 nats</span>
+  </div>
+</div>
+
+<div id="windy" class="panel">
+  <h3>Split on Windy</h3>
+  <p class="sec">Two branches: high (6), low (8)</p>
+
+  <h4>High wind — 3 Yes, 3 No out of 6</h4>
+  <div class="formula">
+    H(high) = −[ (3/6)·ln(3/6) + (3/6)·ln(3/6) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ 0.5·ln(0.5) + 0.5·ln(0.5) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ 0.5·(−0.6931) + 0.5·(−0.6931) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ −0.3466 + (−0.3466) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="hl-r">0.6931 nats</span>  ← maximally mixed!
+  </div>
+
+  <h4>Low wind — 6 Yes, 2 No out of 8</h4>
+  <div class="formula">
+    H(low) = −[ (6/8)·ln(6/8) + (2/8)·ln(2/8) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ 0.75·(−0.2877) + 0.25·(−1.3863) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ −0.2158 + (−0.3466) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="hl-b">0.5624 nats</span>
+  </div>
+
+  <hr>
+  <h4>Weighted entropy after split</h4>
+  <div class="formula">
+    H<sub>after</sub> = (6/14)·0.6931 + (8/14)·0.5624<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= 0.2971 + 0.3214<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="hl">0.6185 nats</span>
+  </div>
+  <div class="formula">
+    IG(Windy) = 0.6517 − 0.6185 = <span class="hl-r">0.0332 nats</span>
+  </div>
+</div>
+
+<div id="temp" class="panel">
+  <h3>Split on Temperature</h3>
+  <p class="sec">Three branches: hot (4), mild (6), cool (4)</p>
+
+  <h4>Hot — 2 Yes, 2 No out of 4</h4>
+  <div class="formula">
+    H(hot) = −[ (2/4)·ln(2/4) + (2/4)·ln(2/4) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ 0.5·(−0.6931) + 0.5·(−0.6931) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="hl-r">0.6931 nats</span>  ← maximally mixed!
+  </div>
+
+  <h4>Mild — 4 Yes, 2 No out of 6</h4>
+  <div class="formula">
+    H(mild) = −[ (4/6)·ln(4/6) + (2/6)·ln(2/6) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ 0.6667·(−0.4055) + 0.3333·(−1.0986) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ −0.2703 + (−0.3662) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="hl-b">0.6365 nats</span>
+  </div>
+
+  <h4>Cool — 3 Yes, 1 No out of 4</h4>
+  <div class="formula">
+    H(cool) = −[ (3/4)·ln(3/4) + (1/4)·ln(1/4) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ 0.75·(−0.2877) + 0.25·(−1.3863) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= −[ −0.2158 + (−0.3466) ]<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="hl-b">0.5624 nats</span>
+  </div>
+
+  <hr>
+  <h4>Weighted entropy after split</h4>
+  <div class="formula">
+    H<sub>after</sub> = (4/14)·0.6931 + (6/14)·0.6365 + (4/14)·0.5624<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= 0.1980 + 0.2728 + 0.1607<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <span class="hl">0.6315 nats</span>
+  </div>
+  <div class="formula">
+    IG(Temperature) = 0.6517 − 0.6315 = <span class="hl-r">0.0202 nats</span>
+  </div>
+</div>
+
+<div id="winner" class="panel">
+  <h3>Information gain comparison (ln / nats)</h3>
+  <div class="gain-row"><span style="min-width:110px">Outlook</span><div class="gain-bar-wrap"><div class="gain-bar" style="width:100%;background:#1D9E75"></div></div><span style="min-width:130px;text-align:right">0.1709 nats <span class="badge badge-win">winner</span></span></div>
+  <div class="gain-row"><span style="min-width:110px">Windy</span><div class="gain-bar-wrap"><div class="gain-bar" style="width:19%;background:#378ADD"></div></div><span style="min-width:130px;text-align:right">0.0332 nats <span class="badge badge-no">skip</span></span></div>
+  <div class="gain-row"><span style="min-width:110px">Temperature</span><div class="gain-bar-wrap"><div class="gain-bar" style="width:12%;background:#D85A30"></div></div><span style="min-width:130px;text-align:right">0.0202 nats <span class="badge badge-no">skip</span></span></div>
+
+  <hr>
+  <h4>Side-by-side: ln vs log₂</h4>
+  <div class="formula">
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  ln (nats)   log₂ (bits)   ratio<br>
+    Root H:      &nbsp;&nbsp;&nbsp; 0.6517  &nbsp;&nbsp;&nbsp;&nbsp;  0.9403    &nbsp;&nbsp;&nbsp; ÷ 0.6931<br>
+    IG Outlook:  &nbsp; 0.1709  &nbsp;&nbsp;&nbsp;&nbsp;  0.2467    &nbsp;&nbsp;&nbsp; ÷ 0.6931<br>
+    IG Windy:    &nbsp;&nbsp;&nbsp; 0.0332  &nbsp;&nbsp;&nbsp;&nbsp;  0.0479    &nbsp;&nbsp;&nbsp; ÷ 0.6931<br>
+    IG Temp:     &nbsp;&nbsp;&nbsp; 0.0202  &nbsp;&nbsp;&nbsp;&nbsp;  0.0292    &nbsp;&nbsp;&nbsp; ÷ 0.6931
+  </div>
+  <div class="note">Every value is scaled down by ln(2) ≈ 0.6931. The ranking is preserved — <strong>Outlook always wins</strong> regardless of log base. The choice of base is purely a units convention, not a mathematical difference.</div>
+</div>
+
+<script>
+function show(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
