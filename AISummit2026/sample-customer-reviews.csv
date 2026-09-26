@@ -1,0 +1,37 @@
+review_id,month,rating,review_text
+R001,2024-01,2,Delivery took almost three weeks. Way too slow.
+R002,2024-01,5,Shipping was fast and everything arrived in perfect condition.
+R003,2024-02,2,My order was delayed twice with no explanation.
+R004,2024-02,4,Arrived a couple days late but the product is great.
+R005,2024-02,1,Still waiting on a package that was due last week.
+R006,2024-03,5,Support answered within minutes and solved my problem right away.
+R007,2024-03,2,I emailed support three times and never heard back.
+R008,2024-03,5,"The rep was patient and really helpful, best service I've had."
+R009,2024-04,1,Customer service was rude and unhelpful when I called.
+R010,2024-04,4,"Support fixed my issue, though it took a few days."
+R011,2024-04,2,Good product but honestly overpriced for what you get.
+R012,2024-05,5,"Great value for the money, would buy again."
+R013,2024-05,2,The subscription keeps getting more expensive every year.
+R014,2024-05,3,"Decent, but there are cheaper options out there."
+R015,2024-06,2,The app is confusing and crashes constantly.
+R016,2024-06,4,Website is clean and easy to navigate.
+R017,2024-06,1,Could not figure out how to cancel through the app.
+R018,2024-07,2,The new app update made everything harder to find.
+R019,2024-07,5,"Excellent quality, exactly what I expected."
+R020,2024-07,1,Broke after two weeks of normal use.
+R021,2024-08,5,"Sturdy and well made, very happy with it."
+R022,2024-08,2,Quality has gone downhill compared to last year.
+R023,2024-08,1,I was charged twice and getting a refund was a nightmare.
+R024,2024-09,2,Cancellation went through but I never got my refund.
+R025,2024-09,4,Billing issue was resolved quickly once I reached someone.
+R026,2024-09,5,"Love this product, it has made my life so much easier."
+R027,2024-10,4,"Pretty good overall, a few small annoyances."
+R028,2024-10,3,It's okay. Does the job but nothing special.
+R029,2024-10,5,"Highly recommend, exceeded my expectations."
+R030,2024-11,2,Disappointed. Expected more for the hype.
+R031,2024-11,4,"Solid choice, happy customer for two years now."
+R032,2024-11,1,Canceling my subscription after this experience.
+R033,2024-12,3,Good product but shipping and support could be better.
+R034,2024-12,5,"Fast delivery, great app, and helpful support - all around great."
+R035,2024-12,2,Too expensive and the app is buggy.
+R036,2024-12,4,"Quality is great, just wish it were a bit cheaper."
