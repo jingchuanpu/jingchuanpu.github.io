@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  SETUP FOR THE INSTRUCTOR:
+  Upload this file (index.html or class-downloads.html) into the SAME folder on your
+  website as all the files below. The links are relative (just filenames), so no editing
+  is needed as long as everything sits together in one folder. If you keep the files in a
+  subfolder (e.g. /files/), add that prefix to each href, e.g. href="files/ai-modes-deck.pptx".
+-->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI &amp; Advanced Analytics for Business Leaders — Class Materials</title>
+<style>
+  :root{ --ink:#1f2933; --sub:#5b6570; --line:#e2e4e8; --panel:#ffffff; --btn:#1f2933; --btn2:#3a4652; }
+  *{box-sizing:border-box}
+  body{font-family:Verdana,Geneva,Arial,sans-serif;color:var(--ink);background:#f0f1f3;
+       margin:0;padding:32px 16px;line-height:1.55;font-size:15px}
+  .wrap{max-width:820px;margin:0 auto}
+  h1{font-size:25px;margin:0 0 4px}
+  .lede{color:var(--sub);margin:0 0 20px}
+  h2{font-size:17px;margin:26px 0 10px;color:var(--ink);
+     border-bottom:1px solid var(--line);padding-bottom:6px}
+  .allbtn{display:inline-block;background:var(--btn);color:#fff;text-decoration:none;
+          padding:12px 22px;border-radius:8px;font-weight:bold;font-size:15px}
+  .allbtn:hover{background:var(--btn2)}
+  .allrow{background:#fff;border:1px solid var(--line);border-radius:12px;
+          padding:18px 20px;display:flex;justify-content:space-between;align-items:center;
+          gap:16px;flex-wrap:wrap}
+  .allrow .txt{font-size:14px;color:var(--sub)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+        padding:14px 16px;margin:10px 0;display:flex;justify-content:space-between;
+        align-items:center;gap:14px;flex-wrap:wrap}
+  .meta{flex:1;min-width:220px}
+  .name{font-weight:bold;font-size:15px}
+  .desc{color:var(--sub);font-size:13.5px;margin-top:2px}
+  .file{font-family:"Courier New",monospace;font-size:12.5px;color:#75808b}
+  .dl{white-space:nowrap;background:#eef0f2;border:1px solid var(--line);color:var(--ink);
+      text-decoration:none;padding:8px 16px;border-radius:7px;font-size:14px;font-weight:bold}
+  .dl:hover{background:#e2e5e8}
+  .dl.view{background:#fff}
+  .note{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;
+        margin-top:22px;font-size:14px}
+  .note b{color:var(--ink)}
+  .note ol{margin:8px 0 0;padding-left:20px}
+  .note li{margin:5px 0}
+  .foot{color:var(--sub);font-size:12.5px;margin-top:26px;border-top:1px solid var(--line);padding-top:12px}
+  code{background:#eef0f2;border:1px solid var(--line);border-radius:4px;padding:1px 5px;
+       font-family:"Courier New",monospace;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>AI &amp; Advanced Analytics for Business Leaders</h1>
+  <p class="lede">Class Materials.</p>
+
+  <h2>Slides</h2>
+  <div class="card">
+    <div class="meta">
+      <div class="name">Workshop slides</div>
+      <div class="desc">The full deck for the session.</div>
+      <div class="file">ai-modes-deck.pptx</div>
+    </div>
+    <a class="dl" href="ai-modes-deck.pptx" download>Download</a>
+  </div>
+
+  <h2>Datasets (for the exercises)</h2>
+  <div class="card">
+    <div class="meta">
+      <div class="name">Monthly metrics</div>
+      <div class="desc">24 months of MapleStream business metrics. Used in the summary and correlation exercises.</div>
+      <div class="file">sample-monthly-metrics.csv</div>
+    </div>
+    <a class="dl" href="sample-monthly-metrics.csv" download>Download</a>
+  </div>
+  <div class="card">
+    <div class="meta">
+      <div class="name">Customer reviews</div>
+      <div class="desc">36 customer reviews with ratings. Used in the text-analysis exercise.</div>
+      <div class="file">sample-customer-reviews.csv</div>
+    </div>
+    <a class="dl" href="sample-customer-reviews.csv" download>Download</a>
+  </div>
+
+  <h2>Skills (for the AI skills exercise)</h2>
+  <div class="card">
+    <div class="meta">
+      <div class="name">Monthly metrics summary</div>
+      <div class="desc">Turns a metrics file into a consistent 5-part summary.</div>
+      <div class="file">monthly-metrics-summary-SKILL.md</div>
+    </div>
+    <a class="dl" href="monthly-metrics-summary-SKILL.md" download>Download</a>
+  </div>
+  <div class="card">
+    <div class="meta">
+      <div class="name">Metric correlations</div>
+      <div class="desc">Finds which metrics move together, with charts and a causation caution.</div>
+      <div class="file">metric-correlations-SKILL.md</div>
+    </div>
+    <a class="dl" href="metric-correlations-SKILL.md" download>Download</a>
+  </div>
+  <div class="card">
+    <div class="meta">
+      <div class="name">Customer feedback analysis</div>
+      <div class="desc">Turns reviews into sentiment and themes.</div>
+      <div class="file">customer-feedback-analysis-SKILL.md</div>
+    </div>
+    <a class="dl" href="customer-feedback-analysis-SKILL.md" download>Download</a>
+  </div>
+
+  <h2>Agent file (for the AI agent demo)</h2>
+  <div class="card">
+    <div class="meta">
+      <div class="name">Agent instructions</div>
+      <div class="desc">Place this in the folder the agent works in; it tells the agent how to build the report.</div>
+      <div class="file">CLAUDE.md</div>
+    </div>
+    <a class="dl" href="CLAUDE.md" download>Download</a>
+  </div>
+
+  <h2>View in your browser (no download needed)</h2>
+  <div class="card">
+    <div class="meta">
+      <div class="name">Prompt engineering: see the difference</div>
+      <div class="desc">Weak vs. engineered prompts and their results, side by side.</div>
+      <div class="file">prompt-engineering-maplestream.html</div>
+    </div>
+    <a class="dl view" href="prompt-engineering-maplestream.html">Open</a>
+  </div>
+
+  <div class="note">
+    <b>Before class (about 5 minutes):</b>
+    <ol>
+      <li>Create a free account at <code>claude.ai</code>.</li>
+      <li>In Settings &rarr; Capabilities, turn on <b>Code execution and file creation</b>.</li>
+      <li>Download the files above so you have them ready for the hands-on exercises.</li>
+    </ol>
+    Please don&rsquo;t paste anything confidential into free AI tools &mdash; the sample files above are all you need.
+  </div>
+
+  <p class="foot">AI &amp; Advanced Analytics for Business Leaders. Materials for classroom use.</p>
+
+</div>
+</body>
+</html>
