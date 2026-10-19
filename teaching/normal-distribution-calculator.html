@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Normal Distribution Calculator</title>
+<style>
+:root{
+  --bg:#ffffff; --text:#1d1d1f; --muted:#555; --panel-head-a:#f4f4f4; --panel-head-b:#e3e3e3;
+  --panel-border:#c9c9c9; --inset:#f0f0f0; --inset-border:#dcdcdc; --input-bg:#fff; --input-border:#9a9a9a;
+  --fill:#2a62f0; --curve:#1d1d1f; --grid:#e6e6e6; --axis:#333; --btn-a:#fbfbfb; --btn-b:#e9e9e9;
+  --focus:#2a62f0; --error:#b3261e; --code-bg:#f6f7f9; --line:#e2e2e2;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1b1c1f; --text:#ececec; --muted:#a8a8a8; --panel-head-a:#34363b; --panel-head-b:#2a2c30;
+    --panel-border:#4a4c52; --inset:#25272b; --inset-border:#3c3e44; --input-bg:#141518; --input-border:#6b6d73;
+    --fill:#4f82ff; --curve:#ececec; --grid:#33353a; --axis:#c8c8c8; --btn-a:#3a3c41; --btn-b:#2f3135;
+    --focus:#7ea3ff; --error:#ff8a80; --code-bg:#232529; --line:#3a3c41;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1b1c1f; --text:#ececec; --muted:#a8a8a8; --panel-head-a:#34363b; --panel-head-b:#2a2c30;
+  --panel-border:#4a4c52; --inset:#25272b; --inset-border:#3c3e44; --input-bg:#141518; --input-border:#6b6d73;
+  --fill:#4f82ff; --curve:#ececec; --grid:#33353a; --axis:#c8c8c8; --btn-a:#3a3c41; --btn-b:#2f3135;
+  --focus:#7ea3ff; --error:#ff8a80; --code-bg:#232529; --line:#3a3c41;
+  color-scheme: dark;
+}
+:root{box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0; background:var(--bg); color:var(--text);
+  font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif; font-size:15px; line-height:1.45;}
+.wrap{max-width:1040px; margin:0 auto; padding:20px 16px 32px;}
+header.top{margin-bottom:16px}
+header.top h1{font-size:1.45rem; margin:0 0 4px; font-weight:600}
+header.top p{margin:0; color:var(--muted); max-width:70ch}
+
+.app{display:grid; grid-template-columns:minmax(250px,320px) 1fr; gap:18px; align-items:start}
+.col{display:flex; flex-direction:column; gap:14px; min-width:0}
+
+/* JMP-style outline panels */
+.panel h2{margin:0; font-size:1rem}
+.toggle{all:unset; box-sizing:border-box; display:flex; align-items:center; gap:8px; width:100%; cursor:pointer;
+  padding:4px 8px; font-weight:700; font-size:1.02rem;
+  background:linear-gradient(var(--panel-head-a),var(--panel-head-b)); border:1px solid var(--panel-border);}
+.toggle:focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+.tri{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid var(--muted);transition:transform .15s}
+.toggle[aria-expanded="false"] .tri{transform:rotate(-90deg)}
+.pbody{padding:10px 4px 2px 12px}
+.pbody[hidden]{display:none}
+
+.row{display:flex; align-items:center; gap:10px; margin:6px 0}
+.row label{min-width:100px}
+.radios label{align-items:flex-start} .radios input{margin-top:3px}
+select,input[type=number]{font:inherit; color:var(--text); background:var(--input-bg); border:1px solid var(--input-border);
+  border-radius:2px; padding:3px 6px;}
+select{min-width:150px}
+input[type=number]{width:110px}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--focus); outline-offset:1px}
+input.bad{border-color:var(--error); outline-color:var(--error)}
+.inset{background:var(--inset); border:1px solid var(--inset-border); padding:10px 12px; border-radius:2px}
+.inset-title{font-weight:600; margin:0 0 6px}
+.btn{font:inherit; color:var(--text); background:linear-gradient(var(--btn-a),var(--btn-b)); border:1px solid var(--panel-border);
+  border-radius:3px; padding:4px 12px; cursor:pointer}
+.btn:hover{filter:brightness(.97)}
+.radios{display:flex; flex-direction:column; gap:4px; margin:4px 0}
+.radios label{display:flex; align-items:center; gap:8px; cursor:pointer}
+.radios input{margin:0; accent-color:var(--fill); width:15px; height:15px}
+
+.chart-box{border:1px solid var(--line); background:var(--bg); padding:4px}
+svg{display:block; width:100%; height:auto; touch-action:none; user-select:none}
+.chart-note{font-size:.85rem; color:var(--muted); margin:6px 0 0}
+
+.calc-grid{display:grid; grid-template-columns:1fr auto; gap:16px; align-items:start}
+.result{margin-top:14px; font-size:1.08rem}
+.result .big{font-weight:700}
+.result .err{color:var(--error); font-weight:600}
+.zline{color:var(--muted); font-size:.9rem; margin-top:4px}
+.rcode{margin-top:12px}
+.rcode-head{display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:.9rem; color:var(--muted)}
+pre{margin:4px 0 0; background:var(--code-bg); border:1px solid var(--line); padding:8px 10px; overflow-x:auto;
+  font-family:Consolas,"SFMono-Regular",Menlo,monospace; font-size:.88rem; line-height:1.5}
+.bottom{display:flex; gap:8px; flex-wrap:wrap}
+#help{margin-top:4px}
+#help ul{margin:6px 0 0; padding-left:20px}
+#help li{margin:3px 0}
+.small{font-size:.85rem; color:var(--muted)}
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
+
+@media (max-width:760px){
+  .app{display:flex; flex-direction:column}
+  .col{display:contents}
+  .bottom,#help{order:10}
+  .panel{width:100%}
+  .calc-grid{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){ .tri{transition:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <h1>Normal Distribution Calculator</h1>
+  <p>Find a probability from a value of X (what R’s <code>pnorm</code> does), or find the value of X from a probability (what R’s <code>qnorm</code> does).</p>
+</header>
+
+<main class="app">
+  <div class="col">
+    <section class="panel">
+      <h2><button class="toggle" aria-expanded="true" aria-controls="b-dist"><span class="tri"></span>Distribution Characteristics</button></h2>
+      <div class="pbody" id="b-dist">
+        <div class="row"><label for="dist">Distribution</label>
+          <select id="dist"><option>Normal</option></select></div>
+        <div class="inset" style="margin-top:10px">
+          <p class="inset-title">Parameters</p>
+          <div class="row"><label for="mu">Mean (μ)</label><input id="mu" type="number" step="any" value="0"></div>
+          <div class="row"><label for="sd">Std. Dev. (σ)</label><input id="sd" type="number" step="any" min="0" value="1"></div>
+          <div class="row" style="margin-top:10px"><button class="btn" id="resetDist" type="button">Reset distribution</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2><button class="toggle" aria-expanded="true" aria-controls="b-type"><span class="tri"></span>Type of Calculation</button></h2>
+      <div class="pbody" id="b-type">
+        <div class="radios" role="radiogroup" aria-label="Type of calculation">
+          <label><input type="radio" name="mode" value="p" checked> <span>Input values and calculate probability <span class="small">(pnorm)</span></span></label>
+          <label><input type="radio" name="mode" value="q"> <span>Input probability and calculate values <span class="small">(qnorm)</span></span></label>
+        </div>
+        <div class="row" style="margin-top:10px"><label for="dec">Decimals</label>
+          <select id="dec" style="min-width:70px">
+            <option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>8</option>
+          </select></div>
+      </div>
+    </section>
+
+    <div class="bottom">
+      <button class="btn" id="helpBtn" type="button" aria-expanded="false" aria-controls="help">Help</button>
+      <button class="btn" id="restart" type="button">Start over</button>
+    </div>
+    <div id="help" class="inset" hidden>
+      <p class="inset-title">How to use this page</p>
+      <ul>
+        <li>Set the mean and standard deviation of X.</li>
+        <li>Choose the type of calculation: value → probability, or probability → value.</li>
+        <li>Pick the region you care about under <b>Probability Options</b> and type your numbers in <b>Input</b>.</li>
+        <li>In value → probability mode you can also drag the edge of the blue area on the graph.</li>
+        <li>The blue area always equals the probability. The R code below the result gives the same answer in R.</li>
+        <li>For the two-value options in probability → value mode, the probability is split equally between the two tails, so q1 and q2 sit at the same distance from the mean.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="col">
+    <section class="panel">
+      <h2><button class="toggle" aria-expanded="true" aria-controls="b-chart"><span class="tri"></span>Normal Distribution</button></h2>
+      <div class="pbody" id="b-chart">
+        <div class="chart-box"><svg id="chart" viewBox="0 0 640 360" role="img" aria-labelledby="chartDesc"><desc id="chartDesc">Normal density curve with the selected region shaded</desc></svg></div>
+        <p class="chart-note" id="dragNote">Tip: drag the edge of the blue area to change the value.</p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2><button class="toggle" aria-expanded="true" aria-controls="b-calc"><span class="tri"></span>Calculations</button></h2>
+      <div class="pbody" id="b-calc">
+        <div class="calc-grid">
+          <div>
+            <p class="inset-title" style="margin-top:0">Probability Options</p>
+            <div class="radios" role="radiogroup" aria-label="Probability options">
+              <label><input type="radio" name="opt" value="le" checked> <span>X ≤ q</span></label>
+              <label><input type="radio" name="opt" value="gt"> <span>X &gt; q</span></label>
+              <label><input type="radio" name="opt" value="btw"> <span>q1 &lt; X ≤ q2</span></label>
+              <label><input type="radio" name="opt" value="out"> <span>X ≤ q1 &nbsp;or&nbsp; X &gt; q2</span></label>
+            </div>
+          </div>
+          <div class="inset" style="min-width:220px">
+            <p class="inset-title">Input</p>
+            <div id="inQ">
+              <div class="row"><label for="q">Value (q)</label><input id="q" type="number" step="any" value="1"></div>
+            </div>
+            <div id="inQ12" hidden>
+              <div class="row"><label for="q1">Value q1</label><input id="q1" type="number" step="any" value="-1"></div>
+              <div class="row"><label for="q2">Value q2</label><input id="q2" type="number" step="any" value="1"></div>
+            </div>
+            <div id="inP" hidden>
+              <div class="row"><label for="p">Probability</label><input id="p" type="number" step="any" min="0" max="1" value="0.95"></div>
+            </div>
+          </div>
+        </div>
+        <div class="result" id="result" aria-live="polite"></div>
+        <div class="rcode">
+          <div class="rcode-head"><span>Same calculation in R</span><button class="btn" id="copyR" type="button" style="font-size:.85rem;padding:2px 10px">Copy</button></div>
+          <pre id="rcode"></pre>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+</div>
+
+<script>
+/* ---------- Normal distribution math ----------
+   pStd: standard normal CDF (Hart's algorithm, double precision, West 2005)
+   qStd: standard normal quantile (Wichura's AS 241, the algorithm R's qnorm uses) */
+function pStd(x){ // lower tail, Hart (West 2005)
+  if (isNaN(x)) return NaN; if (x===Infinity) return 1; if (x===-Infinity) return 0;
+  var a=Math.abs(x), c;
+  if (a>37) c=0; else {
+    var e=Math.exp(-a*a/2), b;
+    if (a<7.07106781186547){
+      b=3.52624965998911e-2*a+0.700383064443688; b=b*a+6.37396220353165; b=b*a+33.912866078383;
+      b=b*a+112.079291497871; b=b*a+221.213596169931; b=b*a+220.206867912376; c=e*b;
+      b=8.83883476483184e-2*a+1.75566716318264; b=b*a+16.064177579207; b=b*a+86.7807322029461;
+      b=b*a+296.564248779674; b=b*a+637.333633378831; b=b*a+793.826512519948; b=b*a+440.413735824752; c=c/b;
+    } else { b=a+0.65; b=a+4/b; b=a+3/b; b=a+2/b; b=a+1/b; c=e/b/2.506628274631; }
+  }
+  return x>0?1-c:c;
+}
+function qStd(p){ // Wichura AS241
+  if (isNaN(p)||p<0||p>1) return NaN; if(p===0) return -Infinity; if(p===1) return Infinity;
+  var q=p-0.5,r,v;
+  if (Math.abs(q)<=0.425){
+    r=0.180625-q*q;
+    return q*(((((((r*2509.0809287301226727+33430.575583588128105)*r+67265.770927008700853)*r+45921.953931549871457)*r+13731.693765509461125)*r+1971.5909503065514427)*r+133.14166789178437745)*r+3.387132872796366608)/
+      (((((((r*5226.495278852545925+28729.085735721942674)*r+39307.89580009271061)*r+21213.794301586595867)*r+5394.1960214247511077)*r+687.1870074920579083)*r+42.313330701600911252)*r+1);
+  }
+  r=q<0?p:1-p; r=Math.sqrt(-Math.log(r));
+  if (r<=5){ r-=1.6;
+    v=(((((((r*7.7454501427834140764e-4+0.0227238449892691845833)*r+0.24178072517745061177)*r+1.27045825245236838258)*r+3.64784832476320460504)*r+5.7694972214606914055)*r+4.6303378461565452959)*r+1.42343711074968357734)/
+      (((((((r*1.05075007164441684324e-9+5.475938084995344946e-4)*r+0.0151986665636164571966)*r+0.14810397642748007459)*r+0.68976733498510000455)*r+1.6763848301838038494)*r+2.05319162663775882187)*r+1);
+  } else { r-=5;
+    v=(((((((r*2.01033439929228813265e-7+2.71155556874348757815e-5)*r+0.0012426609473880784386)*r+0.026532189526576123093)*r+0.29656057182850489123)*r+1.7848265399172913358)*r+5.4637849111641143699)*r+6.6579046435011037772)/
+      (((((((r*2.04426310338993978564e-15+1.4215117583164458887e-7)*r+1.8463183175100546818e-5)*r+7.868691311456132591e-4)*r+0.0148753612908506148525)*r+0.13692988092273580531)*r+0.59983220655588793769)*r+1);
+  }
+  return q<0?-v:v;
+}
+
+function dStd(z){ return Math.exp(-z*z/2)/Math.sqrt(2*Math.PI); }
+
+/* ---------- State & elements ---------- */
+const $ = id => document.getElementById(id);
+const els = {mu:$('mu'), sd:$('sd'), q:$('q'), q1:$('q1'), q2:$('q2'), p:$('p'), dec:$('dec')};
+const DEFAULTS = {mu:'0', sd:'1', q:'1', q1:'-1', q2:'1', p:'0.95'};
+const svg = $('chart');
+const NS = 'http://www.w3.org/2000/svg';
+let W=640, H=360; const M={l:60, r:18, t:22, b:48};
+let geom = null;       // current axis mapping for dragging
+let dragTarget = null;
+
+const mode = () => document.querySelector('input[name=mode]:checked').value;
+const opt  = () => document.querySelector('input[name=opt]:checked').value;
+const num  = el => { const s = el.value.trim(); return s === '' ? NaN : Number(s); };
+
+/* ---------- Formatting ---------- */
+function fmt(x, d){
+  if (!isFinite(x)) return x > 0 ? '∞' : '−∞';
+  let s;
+  if (x !== 0 && Math.abs(x) < Math.pow(10, -d)) s = x.toExponential(3);
+  else s = x.toFixed(d);
+  if (/^-0(\.0+)?$/.test(s)) s = s.slice(1);
+  return s.replace('-', '−');
+}
+const show = x => rNum(x).replace('-', '−');   // value as typed, for display
+function rNum(x){ // clean number for R code
+  if (!isFinite(x)) return x > 0 ? 'Inf' : '-Inf';
+  return String(parseFloat(x.toPrecision(12)));
+}
+function niceStep(range, target){
+  const raw = range/target, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw/mag;
+  return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag;
+}
+function tickLabel(v, step){
+  const dp = Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
+  return fmt(v, dp);
+}
+
+/* ---------- Drawing ---------- */
+function el(tag, attrs, parent){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  (parent || svg).appendChild(e); return e;
+}
+
+function draw(mu, sd, regions, edges){
+  while (svg.lastChild && svg.lastChild.tagName !== 'desc') svg.removeChild(svg.lastChild);
+  const cw = svg.parentElement.clientWidth || 640;
+  W = Math.round(Math.max(380, Math.min(640, cw))); H = Math.round(Math.max(270, W*0.56));
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const cs = getComputedStyle(document.documentElement);
+  const C = n => cs.getPropertyValue(n).trim();
+  if (!(isFinite(mu) && isFinite(sd) && sd > 0)) {
+    el('text', {x:W/2, y:H/2, 'text-anchor':'middle', fill:C('--muted'), 'font-size':15}).textContent = 'Enter a mean and a positive standard deviation.';
+    geom = null; return;
+  }
+  const xmin = mu - 3.5*sd, xmax = mu + 3.5*sd;
+  const ymax = dStd(0)/sd * 1.12;
+  const px = x => M.l + (x - xmin)/(xmax - xmin) * (W - M.l - M.r);
+  const py = y => H - M.b - y/ymax * (H - M.t - M.b);
+  geom = {xmin, xmax, px, inv: X => xmin + (X - M.l)/(W - M.l - M.r)*(xmax - xmin)};
+
+  // plot frame
+  el('rect', {x:M.l, y:M.t, width:W-M.l-M.r, height:H-M.t-M.b, fill:'none', stroke:C('--axis'), 'stroke-width':1});
+
+  // y ticks
+  const ys = niceStep(ymax, 4);
+  for (let y = 0; y <= ymax + 1e-12; y += ys){
+    el('line', {x1:M.l-5, x2:M.l, y1:py(y), y2:py(y), stroke:C('--axis')});
+    el('text', {x:M.l-8, y:py(y)+4, 'text-anchor':'end', 'font-size':12, fill:C('--text')}).textContent = tickLabel(y, ys);
+  }
+  // x ticks
+  const xs = niceStep(xmax - xmin, 7);
+  for (let x = Math.ceil(xmin/xs)*xs; x <= xmax + 1e-9; x += xs){
+    el('line', {x1:px(x), x2:px(x), y1:H-M.b, y2:H-M.b+5, stroke:C('--axis')});
+    el('text', {x:px(x), y:H-M.b+19, 'text-anchor':'middle', 'font-size':12, fill:C('--text')}).textContent = tickLabel(x, xs);
+  }
+  el('text', {x:(M.l+W-M.r)/2, y:H-8, 'text-anchor':'middle', 'font-size':13, fill:C('--text')}).textContent = 'X';
+  const yl = el('text', {x:16, y:(M.t+H-M.b)/2, 'text-anchor':'middle', 'font-size':13, fill:C('--text'), transform:`rotate(-90 16 ${(M.t+H-M.b)/2})`});
+  yl.textContent = 'Density';
+
+  // shaded regions
+  const f = x => dStd((x-mu)/sd)/sd;
+  regions.forEach(([a, b]) => {
+    a = Math.max(a, xmin); b = Math.min(b, xmax);
+    if (!(b > a)) return;
+    const n = 160; let d = `M${px(a)},${py(0)}`;
+    for (let i = 0; i <= n; i++){ const x = a + (b-a)*i/n; d += ` L${px(x).toFixed(2)},${py(f(x)).toFixed(2)}`; }
+    d += ` L${px(b)},${py(0)} Z`;
+    el('path', {d, fill:C('--fill'), stroke:'none'});
+  });
+
+  // curve
+  let d = '';
+  for (let i = 0; i <= 400; i++){ const x = xmin + (xmax-xmin)*i/400; d += (i ? ' L' : 'M') + px(x).toFixed(2) + ',' + py(f(x)).toFixed(2); }
+  el('path', {d, fill:'none', stroke:C('--curve'), 'stroke-width':1.6});
+
+  // edges: labels and drag handles
+  const draggable = mode() === 'p';
+  edges.forEach(e => {
+    if (!isFinite(e.x) || e.x < xmin || e.x > xmax) return;
+    const X = px(e.x);
+    el('line', {x1:X, x2:X, y1:py(0), y2:py(f(e.x)), stroke:C('--fill'), 'stroke-width':2});
+    el('line', {x1:X, x2:X, y1:M.t+18, y2:py(f(e.x)), stroke:C('--muted'), 'stroke-width':1, 'stroke-dasharray':'3 3'});
+    let anchor = X < M.l+30 ? 'start' : X > W-M.r-30 ? 'end' : 'middle', tx = X;
+    if (edges.length === 2 && Math.abs(px(edges[1].x) - px(edges[0].x)) < 110){
+      anchor = e.key === 'q1' || e.label === 'q1' ? 'end' : 'start';
+      tx = anchor === 'end' ? X - 4 : X + 4;
+    }
+    el('text', {x:tx, y:M.t+13, 'text-anchor':anchor, 'font-size':12, 'font-weight':600, fill:C('--text')}).textContent = e.label + ' = ' + (mode()==='p' ? show(e.x) : fmt(e.x, +els.dec.value));
+    if (draggable){
+      const h = el('rect', {x:X-9, y:M.t, width:18, height:H-M.t-M.b, fill:'transparent', style:'cursor:ew-resize', 'data-edge':e.key});
+      h.addEventListener('pointerdown', startDrag);
+      el('circle', {cx:X, cy:py(0), r:5.5, fill:C('--bg'), stroke:C('--fill'), 'stroke-width':2, 'pointer-events':'none'});
+    }
+  });
+}
+
+/* ---------- Dragging ---------- */
+function svgX(evt){
+  const pt = svg.createSVGPoint(); pt.x = evt.clientX; pt.y = evt.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse()).x;
+}
+function startDrag(evt){
+  dragTarget = evt.target.getAttribute('data-edge');
+  svg.setPointerCapture(evt.pointerId);
+  evt.preventDefault();
+}
+svg.addEventListener('pointermove', evt => {
+  if (!dragTarget || !geom) return;
+  const sd = num(els.sd);
+  const step = Math.pow(10, Math.floor(Math.log10(sd)) - 2);
+  let x = geom.inv(svgX(evt));
+  x = Math.min(geom.xmax, Math.max(geom.xmin, x));
+  x = Math.round(x/step)*step;
+  if (dragTarget === 'q1') x = Math.min(x, num(els.q2));
+  if (dragTarget === 'q2') x = Math.max(x, num(els.q1));
+  els[dragTarget].value = rNum(x);
+  update();
+});
+['pointerup','pointercancel'].forEach(t => svg.addEventListener(t, () => { dragTarget = null; }));
+
+/* ---------- Main update ---------- */
+function update(){
+  const mu = num(els.mu), sd = num(els.sd), d = +els.dec.value;
+  const m = mode(), o = opt(), two = (o === 'btw' || o === 'out');
+  $('inQ').hidden = !(m === 'p' && !two);
+  $('inQ12').hidden = !(m === 'p' && two);
+  $('inP').hidden = m !== 'q';
+  $('dragNote').hidden = m !== 'p';
+  Object.values(els).forEach(e => e.classList && e.classList.remove('bad'));
+
+  const res = $('result'), rc = $('rcode');
+  const args = `mean = ${rNum(mu)}, sd = ${rNum(sd)}`;
+  const fail = (msg, bad) => { (bad||[]).forEach(e => e.classList.add('bad')); res.innerHTML = `<span class="err">${msg}</span>`; rc.textContent = ''; draw(mu, sd, [], []); };
+
+  if (!isFinite(mu)) return fail('Enter a number for the mean.', [els.mu]);
+  if (!isFinite(sd) || sd <= 0) return fail('The standard deviation must be a number greater than 0.', [els.sd]);
+
+  const P = x => pStd((x-mu)/sd);          // P(X ≤ x)
+  const Pu = x => pStd(-(x-mu)/sd);        // P(X > x), accurate in the upper tail
+  const Q = p => mu + sd*qStd(p);          // lower-tail quantile
+  const Qu = p => mu - sd*qStd(p);         // upper-tail quantile
+  const z = x => fmt((x-mu)/sd, d);
+  const big = s => `<span class="big">${s}</span>`;
+  let regions = [], edges = [], html = '', zl = '', code = '';
+
+  if (m === 'p'){
+    if (!two){
+      const q = num(els.q);
+      if (!isFinite(q)) return fail('Enter a number for the value q.', [els.q]);
+      edges = [{x:q, label:'q', key:'q'}];
+      zl = `z = (q − μ) / σ = ${z(q)}`;
+      if (o === 'le'){
+        regions = [[-Infinity, q]];
+        html = `P(X ≤ ${show(q)}) = ${big(fmt(P(q), d))}`;
+        code = `pnorm(${rNum(q)}, ${args})`;
+      } else {
+        regions = [[q, Infinity]];
+        html = `P(X &gt; ${show(q)}) = ${big(fmt(Pu(q), d))}`;
+        code = `pnorm(${rNum(q)}, ${args}, lower.tail = FALSE)\n# same as: 1 - pnorm(${rNum(q)}, ${args})`;
+      }
+    } else {
+      const q1 = num(els.q1), q2 = num(els.q2);
+      if (!isFinite(q1)) return fail('Enter a number for q1.', [els.q1]);
+      if (!isFinite(q2)) return fail('Enter a number for q2.', [els.q2]);
+      if (q1 > q2) return fail('q1 must be less than or equal to q2.', [els.q1, els.q2]);
+      edges = [{x:q1, label:'q1', key:'q1'}, {x:q2, label:'q2', key:'q2'}];
+      zl = `z1 = ${z(q1)}, &nbsp; z2 = ${z(q2)}`;
+      if (o === 'btw'){
+        regions = [[q1, q2]];
+        const pr = (q1 >= mu) ? Pu(q1) - Pu(q2) : P(q2) - P(q1);
+        html = `P(${show(q1)} &lt; X ≤ ${show(q2)}) = ${big(fmt(pr, d))}`;
+        code = `pnorm(${rNum(q2)}, ${args}) - pnorm(${rNum(q1)}, ${args})`;
+      } else {
+        regions = [[-Infinity, q1], [q2, Infinity]];
+        html = `P(X ≤ ${show(q1)} or X &gt; ${show(q2)}) = ${big(fmt(P(q1) + Pu(q2), d))}`;
+        code = `pnorm(${rNum(q1)}, ${args}) + pnorm(${rNum(q2)}, ${args}, lower.tail = FALSE)`;
+      }
+    }
+  } else {
+    const p = num(els.p);
+    if (!(isFinite(p) && p > 0 && p < 1)) return fail('Enter a probability between 0 and 1 (for example 0.95).', [els.p]);
+    if (o === 'le'){
+      const q = Q(p); regions = [[-Infinity, q]]; edges = [{x:q, label:'q'}];
+      html = `q = ${big(fmt(q, d))} &nbsp;so that P(X ≤ q) = ${rNum(p)}`;
+      zl = `z = ${z(q)}`;
+      code = `qnorm(${rNum(p)}, ${args})`;
+    } else if (o === 'gt'){
+      const q = Qu(p); regions = [[q, Infinity]]; edges = [{x:q, label:'q'}];
+      html = `q = ${big(fmt(q, d))} &nbsp;so that P(X &gt; q) = ${rNum(p)}`;
+      zl = `z = ${z(q)}`;
+      code = `qnorm(${rNum(p)}, ${args}, lower.tail = FALSE)\n# same as: qnorm(${rNum(1-p)}, ${args})`;
+    } else if (o === 'btw'){
+      const a = (1-p)/2, q1 = Q(a), q2 = Qu(a);
+      regions = [[q1, q2]]; edges = [{x:q1, label:'q1'}, {x:q2, label:'q2'}];
+      html = `q1 = ${big(fmt(q1, d))}, &nbsp;q2 = ${big(fmt(q2, d))} &nbsp;so that P(q1 &lt; X ≤ q2) = ${rNum(p)}`;
+      zl = `z1 = ${z(q1)}, &nbsp; z2 = ${z(q2)} &nbsp;(the remaining ${rNum(1-p)} is split equally between the two tails)`;
+      code = `qnorm(c(${rNum(a)}, ${rNum(1-a)}), ${args})`;
+    } else {
+      const a = p/2, q1 = Q(a), q2 = Qu(a);
+      regions = [[-Infinity, q1], [q2, Infinity]]; edges = [{x:q1, label:'q1'}, {x:q2, label:'q2'}];
+      html = `q1 = ${big(fmt(q1, d))}, &nbsp;q2 = ${big(fmt(q2, d))} &nbsp;so that P(X ≤ q1 or X &gt; q2) = ${rNum(p)}`;
+      zl = `z1 = ${z(q1)}, &nbsp; z2 = ${z(q2)} &nbsp;(${rNum(p)} is split equally: ${rNum(a)} in each tail)`;
+      code = `qnorm(c(${rNum(a)}, ${rNum(1-a)}), ${args})`;
+    }
+  }
+  res.innerHTML = html + `<div class="zline">Standardized: ${zl}</div>`;
+  rc.textContent = code;
+  draw(mu, sd, regions, edges);
+}
+
+/* ---------- Wiring ---------- */
+document.querySelectorAll('input, select').forEach(e => e.addEventListener('input', update));
+document.querySelectorAll('input[type=radio]').forEach(e => e.addEventListener('change', update));
+document.querySelectorAll('.toggle').forEach(b => b.addEventListener('click', () => {
+  const open = b.getAttribute('aria-expanded') === 'true';
+  b.setAttribute('aria-expanded', String(!open));
+  $(b.getAttribute('aria-controls')).hidden = open;
+}));
+$('resetDist').addEventListener('click', () => { els.mu.value = DEFAULTS.mu; els.sd.value = DEFAULTS.sd; update(); });
+$('restart').addEventListener('click', () => {
+  for (const k in DEFAULTS) els[k].value = DEFAULTS[k];
+  els.dec.value = '4';
+  document.querySelector('input[name=mode][value=p]').checked = true;
+  document.querySelector('input[name=opt][value=le]').checked = true;
+  update();
+});
+$('helpBtn').addEventListener('click', () => {
+  const h = $('help'); h.hidden = !h.hidden;
+  $('helpBtn').setAttribute('aria-expanded', String(!h.hidden));
+});
+$('copyR').addEventListener('click', async () => {
+  const text = $('rcode').textContent, b = $('copyR');
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) {
+    const r = document.createRange(); r.selectNodeContents($('rcode'));
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    try { document.execCommand('copy'); } catch (e2) {}
+  }
+  b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy', 1200);
+});
+if (window.matchMedia) {
+  const mq = matchMedia('(prefers-color-scheme: dark)');
+  (mq.addEventListener ? mq.addEventListener('change', update) : mq.addListener(update));
+}
+let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(update, 120); });
+update();
+</script>
+</body>
+</html>
